@@ -1,0 +1,37 @@
+#! /usr/local/Cellar/icarus-verilog/11.0/bin/vvp
+:ivl_version "11.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/system.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/va_math.vpi";
+S_0x7faf2c9049e0 .scope module, "example" "example" 2 1;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "a";
+    .port_info 1 /INPUT 1 "b";
+    .port_info 2 /INPUT 1 "c";
+    .port_info 3 /OUTPUT 1 "y";
+o0x7faf2b632068 .functor BUFZ 1, C4<z>; HiZ drive
+o0x7faf2b632098 .functor BUFZ 1, C4<z>; HiZ drive
+L_0x7faf2c914ef0 .functor OR 1, o0x7faf2b632068, o0x7faf2b632098, C4<0>, C4<0>;
+o0x7faf2b632038 .functor BUFZ 1, C4<z>; HiZ drive
+L_0x7faf2c914fc0 .functor AND 1, o0x7faf2b632038, L_0x7faf2c914ef0, C4<1>, C4<1>;
+v0x7faf2c904b50_0 .net *"_ivl_0", 0 0, L_0x7faf2c914ef0;  1 drivers
+v0x7faf2c914c00_0 .net "a", 0 0, o0x7faf2b632038;  0 drivers
+v0x7faf2c914ca0_0 .net "b", 0 0, o0x7faf2b632068;  0 drivers
+v0x7faf2c914d30_0 .net "c", 0 0, o0x7faf2b632098;  0 drivers
+v0x7faf2c914dd0_0 .net "y", 0 0, L_0x7faf2c914fc0;  1 drivers
+E_0x7faf2c9047e0 .event edge, v0x7faf2c914dd0_0;
+    .scope S_0x7faf2c9049e0;
+T_0 ;
+    %wait E_0x7faf2c9047e0;
+    %vpi_call 2 9 "$display", "%b", v0x7faf2c914dd0_0 {0 0 0};
+    %jmp T_0;
+    .thread T_0, $push;
+# The file index is used to find the file name in the following table.
+:file_names 3;
+    "N/A";
+    "<interactive>";
+    "example.v";

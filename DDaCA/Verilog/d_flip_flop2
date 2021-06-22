@@ -1,0 +1,123 @@
+#! /usr/local/Cellar/icarus-verilog/11.0/bin/vvp
+:ivl_version "11.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/system.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/va_math.vpi";
+S_0x7f825a4075b0 .scope module, "d_flip_flop2_tb" "d_flip_flop2_tb" 2 1;
+ .timescale 0 0;
+v0x7f825a423870_0 .var "clk", 0 0;
+v0x7f825a423940_0 .var "d", 0 0;
+v0x7f825a423a10_0 .net "q", 0 0, L_0x7f825a424540;  1 drivers
+S_0x7f825a407720 .scope module, "dut" "d_flip_flop2" 2 7, 3 3 0, S_0x7f825a4075b0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "d";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7f825a423ae0 .functor NOT 1, v0x7f825a423870_0, C4<0>, C4<0>, C4<0>;
+v0x7f825a423490_0 .net "clk", 0 0, v0x7f825a423870_0;  1 drivers
+v0x7f825a423530_0 .net "d", 0 0, v0x7f825a423940_0;  1 drivers
+v0x7f825a4235e0_0 .net "nclk", 0 0, L_0x7f825a423ae0;  1 drivers
+v0x7f825a4236b0_0 .net "q", 0 0, L_0x7f825a424540;  alias, 1 drivers
+v0x7f825a423760_0 .net "tmp", 0 0, L_0x7f825a424030;  1 drivers
+S_0x7f825a40a740 .scope module, "master" "d_latch" 3 11, 4 1 0, S_0x7f825a407720;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "en";
+    .port_info 1 /INPUT 1 "d";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7f825a423b90 .functor NOT 1, v0x7f825a423940_0, C4<0>, C4<0>, C4<0>;
+L_0x7f825a423c00 .functor AND 1, L_0x7f825a423b90, L_0x7f825a423ae0, C4<1>, C4<1>;
+L_0x7f825a423cb0 .functor AND 1, v0x7f825a423940_0, L_0x7f825a423ae0, C4<1>, C4<1>;
+L_0x7f825a423e20 .functor NOR 1, L_0x7f825a423c00, L_0x7f825a423ed0, C4<0>, C4<0>;
+L_0x7f825a423ed0 .functor NOR 1, L_0x7f825a423cb0, L_0x7f825a423e20, C4<0>, C4<0>;
+L_0x7f825a424030 .functor BUFZ 1, L_0x7f825a423e20, C4<0>, C4<0>, C4<0>;
+v0x7f825a407e30_0 .net "and1", 0 0, L_0x7f825a423c00;  1 drivers
+v0x7f825a422810_0 .net "and2", 0 0, L_0x7f825a423cb0;  1 drivers
+v0x7f825a4228b0_0 .net "d", 0 0, v0x7f825a423940_0;  alias, 1 drivers
+v0x7f825a422960_0 .net "en", 0 0, L_0x7f825a423ae0;  alias, 1 drivers
+v0x7f825a422a00_0 .net "nd", 0 0, L_0x7f825a423b90;  1 drivers
+v0x7f825a422ae0_0 .net "nor1", 0 0, L_0x7f825a423e20;  1 drivers
+v0x7f825a422b80_0 .net "nor2", 0 0, L_0x7f825a423ed0;  1 drivers
+v0x7f825a422c20_0 .net "q", 0 0, L_0x7f825a424030;  alias, 1 drivers
+S_0x7f825a422cf0 .scope module, "slave" "d_latch" 3 12, 4 1 0, S_0x7f825a407720;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "en";
+    .port_info 1 /INPUT 1 "d";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7f825a4240a0 .functor NOT 1, L_0x7f825a424030, C4<0>, C4<0>, C4<0>;
+L_0x7f825a424190 .functor AND 1, L_0x7f825a4240a0, v0x7f825a423870_0, C4<1>, C4<1>;
+L_0x7f825a424280 .functor AND 1, L_0x7f825a424030, v0x7f825a423870_0, C4<1>, C4<1>;
+L_0x7f825a4242f0 .functor NOR 1, L_0x7f825a424190, L_0x7f825a4243c0, C4<0>, C4<0>;
+L_0x7f825a4243c0 .functor NOR 1, L_0x7f825a424280, L_0x7f825a4242f0, C4<0>, C4<0>;
+L_0x7f825a424540 .functor BUFZ 1, L_0x7f825a4242f0, C4<0>, C4<0>, C4<0>;
+v0x7f825a422f10_0 .net "and1", 0 0, L_0x7f825a424190;  1 drivers
+v0x7f825a422fb0_0 .net "and2", 0 0, L_0x7f825a424280;  1 drivers
+v0x7f825a423050_0 .net "d", 0 0, L_0x7f825a424030;  alias, 1 drivers
+v0x7f825a423120_0 .net "en", 0 0, v0x7f825a423870_0;  alias, 1 drivers
+v0x7f825a4231b0_0 .net "nd", 0 0, L_0x7f825a4240a0;  1 drivers
+v0x7f825a423280_0 .net "nor1", 0 0, L_0x7f825a4242f0;  1 drivers
+v0x7f825a423320_0 .net "nor2", 0 0, L_0x7f825a4243c0;  1 drivers
+v0x7f825a4233c0_0 .net "q", 0 0, L_0x7f825a424540;  alias, 1 drivers
+    .scope S_0x7f825a4075b0;
+T_0 ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423870_0, 0, 1;
+    %end;
+    .thread T_0;
+    .scope S_0x7f825a4075b0;
+T_1 ;
+    %delay 5, 0;
+    %load/vec4 v0x7f825a423870_0;
+    %nor/r;
+    %store/vec4 v0x7f825a423870_0, 0, 1;
+    %jmp T_1;
+    .thread T_1;
+    .scope S_0x7f825a4075b0;
+T_2 ;
+    %vpi_call 2 10 "$dumpfile", "d_flip_flop2.vcd" {0 0 0};
+    %vpi_call 2 11 "$dumpvars", 32'sb00000000000000000000000000000000, S_0x7f825a4075b0 {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 3, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 1, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 4, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 8, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 6, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 7, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 7, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f825a423940_0, 0, 1;
+    %delay 20, 0;
+    %vpi_call 2 31 "$finish" {0 0 0};
+    %end;
+    .thread T_2;
+    .scope S_0x7f825a4075b0;
+T_3 ;
+    %vpi_call 2 35 "$monitor", "At time %t, q = %h", $time, v0x7f825a423a10_0 {0 0 0};
+    %end;
+    .thread T_3;
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "d_flip_flop2_tb.v";
+    "d_flip_flop2.v";
+    "./d_latch.v";
