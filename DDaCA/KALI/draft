@@ -1,0 +1,43 @@
+KALI
+
+- 32-bit address space
+- 16-bit addressability
+- 8 registers
+
+[opcode:5] [ext:1] [operand1:5] [operand2:5]
+--------------------------------------------
+opcode - 32 possible instructions
+ext - used for choosing destination register; if set 0 then operand1 is chosen, otherwise appropriate register is chosen
+    ext + operand1 + operand2 = 11 bit value
+
+Opcodes:
+- Arithmetic
+    1. ADD
+    2. ADDI
+    3. SUB
+    4. CMP - compare (set flags)
+- Logic
+    . NAND
+    . SHFTL - logical left shift
+    . SHFTR - logical right shift
+    . SHFTAL - arithmetic left shift
+    . SHFTAR - arithmetic right shift
+    . ROT - right rotate
+    . ORU - OR upper byte (of register)
+    . ORL - OR lower byte (of register)
+- Data/Control
+    . MOV - between registers
+    . LOAD - from memory to register
+    . STORE - from register to memory
+    . JMP - jump (based on flags)
+    . RST - set value to 0 (of register)
+    . RET - return to caller
+
+Registers:
+- Temporary: R0 - R3
+- Jump: R4
+- Load: R5
+- Store: R6
+- Arithmetic/Logic: R7
+
+- 2-cycle processor

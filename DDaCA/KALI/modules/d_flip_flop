@@ -1,0 +1,62 @@
+#! /usr/local/Cellar/icarus-verilog/11.0/bin/vvp
+:ivl_version "11.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/system.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/va_math.vpi";
+S_0x7fe891d05050 .scope module, "d_flip_flop" "d_flip_flop" 2 3;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "clk";
+    .port_info 2 /OUTPUT 1 "q";
+o0x7fe891e32278 .functor BUFZ 1, C4<z>; HiZ drive
+L_0x7fe891d16320 .functor NOT 1, o0x7fe891e32278, C4<0>, C4<0>, C4<0>;
+v0x7fe891d15f40_0 .net "clk", 0 0, o0x7fe891e32278;  0 drivers
+v0x7fe891d15fe0_0 .net "clk_n", 0 0, L_0x7fe891d16320;  1 drivers
+o0x7fe891e32068 .functor BUFZ 1, C4<z>; HiZ drive
+v0x7fe891d16090_0 .net "d", 0 0, o0x7fe891e32068;  0 drivers
+v0x7fe891d16160_0 .net "q", 0 0, L_0x7fe891d16ac0;  1 drivers
+v0x7fe891d16210_0 .net "q_tmp", 0 0, L_0x7fe891d16680;  1 drivers
+S_0x7fe891d051c0 .scope module, "master" "d_latch" 2 10, 3 1 0, S_0x7fe891d05050;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "e";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7fe891d16410 .functor NOT 1, o0x7fe891e32068, C4<0>, C4<0>, C4<0>;
+L_0x7fe891d164c0 .functor AND 1, L_0x7fe891d16410, L_0x7fe891d16320, C4<1>, C4<1>;
+L_0x7fe891d16570 .functor AND 1, o0x7fe891e32068, L_0x7fe891d16320, C4<1>, C4<1>;
+L_0x7fe891d16680 .functor NOR 1, L_0x7fe891d164c0, L_0x7fe891d16730, C4<0>, C4<0>;
+L_0x7fe891d16730 .functor NOR 1, L_0x7fe891d16570, L_0x7fe891d16680, C4<0>, C4<0>;
+v0x7fe891d05380_0 .net "and1", 0 0, L_0x7fe891d164c0;  1 drivers
+v0x7fe891d15400_0 .net "and2", 0 0, L_0x7fe891d16570;  1 drivers
+v0x7fe891d154a0_0 .net "d", 0 0, o0x7fe891e32068;  alias, 0 drivers
+v0x7fe891d15550_0 .net "d_n", 0 0, L_0x7fe891d16410;  1 drivers
+v0x7fe891d155f0_0 .net "e", 0 0, L_0x7fe891d16320;  alias, 1 drivers
+v0x7fe891d156d0_0 .net "q", 0 0, L_0x7fe891d16680;  alias, 1 drivers
+v0x7fe891d15770_0 .net "q_n", 0 0, L_0x7fe891d16730;  1 drivers
+S_0x7fe891d15840 .scope module, "slave" "d_latch" 2 11, 3 1 0, S_0x7fe891d05050;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "e";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7fe891d168d0 .functor NOT 1, L_0x7fe891d16680, C4<0>, C4<0>, C4<0>;
+L_0x7fe891d16940 .functor AND 1, L_0x7fe891d168d0, o0x7fe891e32278, C4<1>, C4<1>;
+L_0x7fe891d169b0 .functor AND 1, L_0x7fe891d16680, o0x7fe891e32278, C4<1>, C4<1>;
+L_0x7fe891d16ac0 .functor NOR 1, L_0x7fe891d16940, L_0x7fe891d16bb0, C4<0>, C4<0>;
+L_0x7fe891d16bb0 .functor NOR 1, L_0x7fe891d169b0, L_0x7fe891d16ac0, C4<0>, C4<0>;
+v0x7fe891d15a60_0 .net "and1", 0 0, L_0x7fe891d16940;  1 drivers
+v0x7fe891d15b00_0 .net "and2", 0 0, L_0x7fe891d169b0;  1 drivers
+v0x7fe891d15ba0_0 .net "d", 0 0, L_0x7fe891d16680;  alias, 1 drivers
+v0x7fe891d15c70_0 .net "d_n", 0 0, L_0x7fe891d168d0;  1 drivers
+v0x7fe891d15d00_0 .net "e", 0 0, o0x7fe891e32278;  alias, 0 drivers
+v0x7fe891d15dd0_0 .net "q", 0 0, L_0x7fe891d16ac0;  alias, 1 drivers
+v0x7fe891d15e70_0 .net "q_n", 0 0, L_0x7fe891d16bb0;  1 drivers
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "d_flip_flop.v";
+    "./d_latch.v";

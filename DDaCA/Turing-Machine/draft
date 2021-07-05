@@ -1,0 +1,14 @@
+Binary Dictionary Turing Machine
+
+Registers:
+- Addr: Next logic address
+
+Memory Layout:
+0: [ symbol | shiftr | br0_addr | br1_addr ]
+1: [ symbol | shiftr | br0_addr | br1_addr ]
+...
+
+brx_addr - the next state logic address if the Sym holds x
+shiftr - if 1 the tape is shifted to right, otherwise shifted to left
+
+The machine is a single-cycle machine and it always start by the initial current state(i.e. state1).

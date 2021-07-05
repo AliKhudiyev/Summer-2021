@@ -1,0 +1,88 @@
+#! /usr/local/Cellar/icarus-verilog/11.0/bin/vvp
+:ivl_version "11.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/system.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/va_math.vpi";
+S_0x7f934240a2a0 .scope module, "d_latch_tb" "d_latch_tb" 2 1;
+ .timescale 0 0;
+v0x7f934241f9f0_0 .var "d", 0 0;
+v0x7f934241fa90_0 .var "en", 0 0;
+v0x7f934241fb40_0 .net "q", 0 0, L_0x7f934241fe80;  1 drivers
+S_0x7f934240a410 .scope module, "dut" "d_latch" 2 5, 3 1 0, S_0x7f934240a2a0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "e";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7f934241fc10 .functor NOT 1, v0x7f934241f9f0_0, C4<0>, C4<0>, C4<0>;
+L_0x7f934241fce0 .functor AND 1, L_0x7f934241fc10, v0x7f934241fa90_0, C4<1>, C4<1>;
+L_0x7f934241fdf0 .functor AND 1, v0x7f934241f9f0_0, v0x7f934241fa90_0, C4<1>, C4<1>;
+L_0x7f934241fe80 .functor NOR 1, L_0x7f934241fce0, L_0x7f934241ff90, C4<0>, C4<0>;
+L_0x7f934241ff90 .functor NOR 1, L_0x7f934241fdf0, L_0x7f934241fe80, C4<0>, C4<0>;
+v0x7f934240aad0_0 .net "and1", 0 0, L_0x7f934241fce0;  1 drivers
+v0x7f934241f5b0_0 .net "and2", 0 0, L_0x7f934241fdf0;  1 drivers
+v0x7f934241f650_0 .net "d", 0 0, v0x7f934241f9f0_0;  1 drivers
+v0x7f934241f700_0 .net "d_n", 0 0, L_0x7f934241fc10;  1 drivers
+v0x7f934241f7a0_0 .net "e", 0 0, v0x7f934241fa90_0;  1 drivers
+v0x7f934241f880_0 .net "q", 0 0, L_0x7f934241fe80;  alias, 1 drivers
+v0x7f934241f920_0 .net "q_n", 0 0, L_0x7f934241ff90;  1 drivers
+    .scope S_0x7f934240a2a0;
+T_0 ;
+    %vpi_call 2 8 "$dumpfile", "d_latch.vcd" {0 0 0};
+    %vpi_call 2 9 "$dumpvars", 32'sb00000000000000000000000000000000, S_0x7f934240a2a0 {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241fa90_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241fa90_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241fa90_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241fa90_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241fa90_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7f934241f9f0_0, 0, 1;
+    %delay 10, 0;
+    %vpi_call 2 22 "$finish" {0 0 0};
+    %end;
+    .thread T_0;
+    .scope S_0x7f934240a2a0;
+T_1 ;
+    %vpi_call 2 26 "$monitor", "At time %t, value = %h (%0d)", $time, v0x7f934241fb40_0, v0x7f934241fb40_0 {0 0 0};
+    %end;
+    .thread T_1;
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "d_latch_tb.v";
+    "../../modules/d_latch.v";

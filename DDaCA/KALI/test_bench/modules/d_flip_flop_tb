@@ -1,0 +1,119 @@
+#! /usr/local/Cellar/icarus-verilog/11.0/bin/vvp
+:ivl_version "11.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/system.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/Cellar/icarus-verilog/11.0/lib/ivl/va_math.vpi";
+S_0x7ff72c6041c0 .scope module, "d_flip_flop_tb" "d_flip_flop_tb" 2 1;
+ .timescale 0 0;
+v0x7ff72c615750_0 .var "clk", 0 0;
+v0x7ff72c615820_0 .var "d", 0 0;
+v0x7ff72c6158f0_0 .net "q", 0 0, L_0x7ff72c616120;  1 drivers
+S_0x7ff72c604340 .scope module, "dut" "d_flip_flop" 2 7, 3 3 0, S_0x7ff72c6041c0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "clk";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7ff72c6159c0 .functor NOT 1, v0x7ff72c615750_0, C4<0>, C4<0>, C4<0>;
+v0x7ff72c615370_0 .net "clk", 0 0, v0x7ff72c615750_0;  1 drivers
+v0x7ff72c615410_0 .net "clk_n", 0 0, L_0x7ff72c6159c0;  1 drivers
+v0x7ff72c6154c0_0 .net "d", 0 0, v0x7ff72c615820_0;  1 drivers
+v0x7ff72c615590_0 .net "q", 0 0, L_0x7ff72c616120;  alias, 1 drivers
+v0x7ff72c615640_0 .net "q_tmp", 0 0, L_0x7ff72c615d00;  1 drivers
+S_0x7ff72c604550 .scope module, "master" "d_latch" 3 10, 4 1 0, S_0x7ff72c604340;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "e";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7ff72c615a70 .functor NOT 1, v0x7ff72c615820_0, C4<0>, C4<0>, C4<0>;
+L_0x7ff72c615ae0 .functor AND 1, L_0x7ff72c615a70, L_0x7ff72c6159c0, C4<1>, C4<1>;
+L_0x7ff72c615b90 .functor AND 1, v0x7ff72c615820_0, L_0x7ff72c6159c0, C4<1>, C4<1>;
+L_0x7ff72c615d00 .functor NOR 1, L_0x7ff72c615ae0, L_0x7ff72c615d70, C4<0>, C4<0>;
+L_0x7ff72c615d70 .functor NOR 1, L_0x7ff72c615b90, L_0x7ff72c615d00, C4<0>, C4<0>;
+v0x7ff72c604780_0 .net "and1", 0 0, L_0x7ff72c615ae0;  1 drivers
+v0x7ff72c614830_0 .net "and2", 0 0, L_0x7ff72c615b90;  1 drivers
+v0x7ff72c6148d0_0 .net "d", 0 0, v0x7ff72c615820_0;  alias, 1 drivers
+v0x7ff72c614980_0 .net "d_n", 0 0, L_0x7ff72c615a70;  1 drivers
+v0x7ff72c614a20_0 .net "e", 0 0, L_0x7ff72c6159c0;  alias, 1 drivers
+v0x7ff72c614b00_0 .net "q", 0 0, L_0x7ff72c615d00;  alias, 1 drivers
+v0x7ff72c614ba0_0 .net "q_n", 0 0, L_0x7ff72c615d70;  1 drivers
+S_0x7ff72c614c70 .scope module, "slave" "d_latch" 3 11, 4 1 0, S_0x7ff72c604340;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "d";
+    .port_info 1 /INPUT 1 "e";
+    .port_info 2 /OUTPUT 1 "q";
+L_0x7ff72c615f30 .functor NOT 1, L_0x7ff72c615d00, C4<0>, C4<0>, C4<0>;
+L_0x7ff72c615fa0 .functor AND 1, L_0x7ff72c615f30, v0x7ff72c615750_0, C4<1>, C4<1>;
+L_0x7ff72c616090 .functor AND 1, L_0x7ff72c615d00, v0x7ff72c615750_0, C4<1>, C4<1>;
+L_0x7ff72c616120 .functor NOR 1, L_0x7ff72c615fa0, L_0x7ff72c6161d0, C4<0>, C4<0>;
+L_0x7ff72c6161d0 .functor NOR 1, L_0x7ff72c616090, L_0x7ff72c616120, C4<0>, C4<0>;
+v0x7ff72c614e90_0 .net "and1", 0 0, L_0x7ff72c615fa0;  1 drivers
+v0x7ff72c614f30_0 .net "and2", 0 0, L_0x7ff72c616090;  1 drivers
+v0x7ff72c614fd0_0 .net "d", 0 0, L_0x7ff72c615d00;  alias, 1 drivers
+v0x7ff72c6150a0_0 .net "d_n", 0 0, L_0x7ff72c615f30;  1 drivers
+v0x7ff72c615130_0 .net "e", 0 0, v0x7ff72c615750_0;  alias, 1 drivers
+v0x7ff72c615200_0 .net "q", 0 0, L_0x7ff72c616120;  alias, 1 drivers
+v0x7ff72c6152a0_0 .net "q_n", 0 0, L_0x7ff72c6161d0;  1 drivers
+    .scope S_0x7ff72c6041c0;
+T_0 ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615750_0, 0, 1;
+    %end;
+    .thread T_0;
+    .scope S_0x7ff72c6041c0;
+T_1 ;
+    %delay 5, 0;
+    %load/vec4 v0x7ff72c615750_0;
+    %nor/r;
+    %store/vec4 v0x7ff72c615750_0, 0, 1;
+    %jmp T_1;
+    .thread T_1;
+    .scope S_0x7ff72c6041c0;
+T_2 ;
+    %vpi_call 2 10 "$dumpfile", "d_flip_flop.vcd" {0 0 0};
+    %vpi_call 2 11 "$dumpvars", 32'sb00000000000000000000000000000000, S_0x7ff72c6041c0 {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 10, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 3, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 1, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 4, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 8, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 6, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 7, 0;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 7, 0;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x7ff72c615820_0, 0, 1;
+    %delay 20, 0;
+    %vpi_call 2 31 "$finish" {0 0 0};
+    %end;
+    .thread T_2;
+    .scope S_0x7ff72c6041c0;
+T_3 ;
+    %vpi_call 2 35 "$monitor", "At time %t, q = %h", $time, v0x7ff72c6158f0_0 {0 0 0};
+    %end;
+    .thread T_3;
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "d_flip_flop_tb.v";
+    "../../modules/d_flip_flop.v";
+    "../../modules/d_latch.v";
