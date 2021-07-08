@@ -1,0 +1,92 @@
+$date
+	Thu Jul  8 23:11:18 2021
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module ram_tb $end
+$var wire 32 ! out [31:0] $end
+$var reg 14 " addr [13:0] $end
+$var reg 1 # clk $end
+$var reg 32 $ d [31:0] $end
+$var reg 1 % we $end
+$scope module mem $end
+$var wire 14 & addr [13:0] $end
+$var wire 1 # clk $end
+$var wire 32 ' data [31:0] $end
+$var wire 1 % we $end
+$var reg 32 ( out [31:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+$dumpvars
+bx (
+b11 '
+b0 &
+1%
+b11 $
+0#
+b0 "
+bx !
+$end
+#5
+1#
+#10
+0#
+b1001 $
+b1001 '
+#13
+0%
+b1000000000110001 $
+b1000000000110001 '
+#14
+b110 $
+b110 '
+#15
+b11 !
+b11 (
+1#
+#18
+1%
+b11 $
+b11 '
+#20
+0#
+#25
+1#
+#26
+b1000 $
+b1000 '
+#30
+0#
+#32
+b1111111111111111 $
+b1111111111111111 '
+#35
+1#
+#39
+0%
+b0 $
+b0 '
+#40
+0#
+#45
+b1111111111111111 !
+b1111111111111111 (
+1#
+#46
+b11 $
+b11 '
+#50
+0#
+#55
+1#
+#60
+0#
+#65
+1#
+#66
