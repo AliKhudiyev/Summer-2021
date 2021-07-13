@@ -1,4 +1,4 @@
-// `include "modules/d_flip_flop.v"
+`include "modules/d_flip_flop.v"
 
 module register #(
     parameter DATA_WIDTH = 14
