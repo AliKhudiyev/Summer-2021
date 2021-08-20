@@ -1,6 +1,6 @@
 #include <cstdio>
 
-#define PRECOMPILER_FUNCTION_INITIALIZATION
+// #define PRECOMPILER_FUNCTION_INITIALIZATION
 
 #include "ppee.h"
 
@@ -14,9 +14,19 @@ class MyFunction: public GenericFunction{
 	}
 	~MyFunction(){}
 
-	virtual size_t run(GenericArgument& generic_argument, size_t timestamp){
+	virtual size_t run(GenericArgument& generic_argument, const Engine* const engine){
 		// ...
-		printf("ID[%zu] | Number of argument units: %zu\n", m_id, generic_argument.count());
+		// printf("ID[%zu] | Number of argument units: %zu\n", m_id, generic_argument.count());
+		engine->log(
+				[](const void* const args) -> bool {
+					auto engine = (Engine*)args;
+					return (engine->timestamp() == 1 || 
+							!(engine->timestamp() % engine->opts.timestamp_steps));
+				}, 
+				engine, 
+				"ID[%zu] TS[%zu]| Number of argument units: %zu\n", 
+				m_id, engine->timestamp(), generic_argument.count()
+		);
 		
 		return 0;
 	}
@@ -53,6 +63,9 @@ int main(){
 
 	// Engine
 	Engine engine(&execution_graph, &generic_argument);
+	engine.opts.verbosity = VERBOSITY_ALL;
+	engine.opts.timestamp_steps = 3;
+	engine.log_file_path("test.log");
 	printf("Engine init: succ\n");
 	engine.iterate(8);
 	printf("Terminated: succ\n");

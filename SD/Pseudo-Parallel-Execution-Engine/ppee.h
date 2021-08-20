@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <cstdio>
+#include <cstdarg>
 #include <algorithm>
 #include <random>
 
@@ -13,6 +14,11 @@
 
 #define ALLOC_TYPE_STACK 	true
 #define ALLOC_TYPE_HEAP		false
+
+// #define VERBOSITY_NONE 		0
+#define VERBOSITY_DEFAULT 	1
+#define VERBOSITY_NORMAL	2
+#define VERBOSITY_ALL		3
 
 namespace ppee{
 	/*
@@ -155,6 +161,8 @@ namespace ppee{
 		}
 	};
 	
+	class Engine;
+
 	/*
 	 * Generic Function class
 	 * Utilizes the generic argument in which changes can be made.
@@ -186,7 +194,7 @@ namespace ppee{
 
 		// This function has to be implemented explicitly by the user!
 		// Returns the number of modified generic argument units (optional)
-		virtual size_t run(GenericArgument& generic_argument, size_t timestamp) = 0;
+		virtual size_t run(GenericArgument& generic_argument, const Engine* const engine) = 0;
 	};
 
 	size_t GenericFunction::generic_function_count = 0;
@@ -213,9 +221,11 @@ namespace ppee{
 
 		public:
 		void add(GenericFunction* function, size_t timestamp=-1){
+/* Unnecessary init & tear
 #ifdef PRECOMPILER_FUNCTION_INITIALIZATION
 			function->init();
 #endif
+*/
 			if(timestamp == -1){
 				m_function_timestamps[++m_max_timestamp].push_back(function);
 			} else{
@@ -232,10 +242,12 @@ namespace ppee{
 			m_generic_functions.clear();
 			for(auto it=m_function_timestamps.begin(); it!=m_function_timestamps.end(); ++it){
 				if(randomize)	std::random_shuffle(it->second.begin(), it->second.end());
+/* Unnecessary init & tear
 #ifndef PRECOMPILER_FUNCTION_INITIALIZATION
 				for(auto it2=it->second.begin(); it2!=it->second.end(); ++it2)
 					(*it2)->init();
 #endif
+*/
 				m_generic_functions.push_back(it->second);
 			}
 			
@@ -298,32 +310,107 @@ namespace ppee{
 		}
 	};
 
+	void log(const char* restrict_format, ...);
+
 	class Engine{
+		friend void log(const char* restrict_format, ...);
+		
 		private:
 		ExecutionGraph* m_execution_graph;
 		GenericArgument* m_generic_argument;
 		size_t m_timestamp;
 
+		// file path into which logging info will be put
+		std::string m_log_file_path;
+		mutable FILE* m_log_file;
+
+		struct Diagnostics{
+			float activation_per_function;
+			float read_per_argument, write_per_argument;
+			float activation_density;
+		}m_diagnostics;
+
 		public:
-		Engine(ExecutionGraph* execution_graph, GenericArgument* generic_argument):
+		struct Options{
+			// degree of verbosity/logging/debugging
+			char verbosity;
+			// number of consecutive timestamps after which verbosity will occur
+			size_t timestamp_steps;
+		}opts;
+
+		public:
+		Engine(ExecutionGraph* execution_graph, GenericArgument* generic_argument, const std::string& log_file_path="default.log"):
 			m_execution_graph(execution_graph),
 			m_generic_argument(generic_argument),
-			m_timestamp(0)
+			m_timestamp(0),
+			m_log_file_path(log_file_path),
+			opts({ VERBOSITY_DEFAULT, 1 })
 		{
 			// ...
+			this->log_file_path(log_file_path);
+		}
+		~Engine(){
+			fclose(m_log_file);
+		}
+
+		inline size_t timestamp() const { return m_timestamp; }
+		inline const Diagnostics& diagnostics() const { return m_diagnostics; }
+
+		bool log_file_path(const std::string& file_path){
+			m_log_file_path = file_path;
+			m_log_file = fopen(m_log_file_path.c_str(), "w");
+			if(!m_log_file){
+				printf("ERROR: Log file %s couldn't be opened!\n", m_log_file_path.c_str());
+				return false;
+			}
+			return true;
+		}
+		inline void log_file_stdout() { m_log_file = stdout; }
+		inline void log_file_stderr() { m_log_file = stderr; }
+
+		void log(const char* restrict_format, ...) const {
+			if(opts.verbosity == VERBOSITY_ALL){
+				va_list args;
+				va_start(args, restrict_format);
+				vfprintf(m_log_file, restrict_format, args);
+				va_end(args);
+			}
+		}
+		void log(bool (*filter)(const void* const /* args */), const void* const args, const char* restrict_format, ...) const {
+			if(filter && filter(args) && opts.verbosity == VERBOSITY_ALL){
+				va_list args;
+				va_start(args, restrict_format);
+				vfprintf(m_log_file, restrict_format, args);
+				va_end(args);
+			}
 		}
 
 		// runs for n iterations
 		int iterate(size_t n=1){
+			if(is_invalid()) return -1;
+
 			while(n--){
 				++m_timestamp;
-				printf(" > Timestamp: %zu\n", m_timestamp);
+				// fprintf(stdout, " > Timestamp: %zu\n", m_timestamp);
+				if(!(m_timestamp % opts.timestamp_steps) || m_timestamp == 1){
+					fprintf(m_log_file, "= = = = = = = = =\n");
+					switch(opts.verbosity){
+						case VERBOSITY_ALL:
+							// fprintf(m_log_file, " >>> Timestamp: %zu\n", m_timestamp);
+						case VERBOSITY_NORMAL:
+							// fprintf(m_log_file, " >> Timestamp: %zu\n", m_timestamp);
+						case VERBOSITY_DEFAULT:
+							fprintf(m_log_file, " > Timestamp: %zu\n", m_timestamp);
+						default: break;
+					}
+					fprintf(m_log_file, "= = = = = = = = =\n");
+				}
 
 				auto generic_functions = m_execution_graph->get_curr();	
 				if(!generic_functions)	return n;
 
 				for(size_t i=0; i<generic_functions->size(); ++i){
-					(*generic_functions)[i]->run(*m_generic_argument, m_timestamp);
+					(*generic_functions)[i]->run(*m_generic_argument, this);
 				}
 			}
 			return n;
@@ -331,6 +418,9 @@ namespace ppee{
 		// iterates till an error occurs
 		int iterate_all(){
 			// TODO
+			while(!is_invalid()){
+				;
+			}
 			return 0;
 		}
 		// runs till the end of execution; may not halt for a long time
@@ -338,6 +428,9 @@ namespace ppee{
 			// TODO
 			return 0;
 		}
+
+		private:
+		inline bool is_invalid() const { return !m_execution_graph || !m_generic_argument; }
 	};
 }
 
