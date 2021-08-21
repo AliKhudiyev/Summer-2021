@@ -1,14 +1,14 @@
 = = = = = = = = =
  > Timestamp: 1
 = = = = = = = = =
-ID[3] TS[1]| Number of argument units: 4
+ID[3] TS[1]| Number of argument units: 4, rarg: 4.000
 = = = = = = = = =
  > Timestamp: 3
 = = = = = = = = =
-ID[3] TS[3]| Number of argument units: 4
+ID[3] TS[3]| Number of argument units: 4, rarg: 16.000
 = = = = = = = = =
  > Timestamp: 6
 = = = = = = = = =
-ID[0] TS[6]| Number of argument units: 4
-ID[1] TS[6]| Number of argument units: 4
-ID[2] TS[6]| Number of argument units: 4
+ID[0] TS[6]| Number of argument units: 4, rarg: 12.000
+ID[1] TS[6]| Number of argument units: 4, rarg: 24.000
+ID[2] TS[6]| Number of argument units: 4, rarg: 36.000

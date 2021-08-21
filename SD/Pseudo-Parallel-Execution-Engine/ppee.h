@@ -9,11 +9,11 @@
 #include <algorithm>
 #include <random>
 
-#define SENSITIVE	true
-#define INSENSITIVE	false
 
-#define ALLOC_TYPE_STACK 	true
-#define ALLOC_TYPE_HEAP		false
+#define INSENSITIVE 	0
+#define SENSITIVE_WRITE	1
+#define SENSITIVE_READ	2
+#define SENSITIVE_ALL	3
 
 // #define VERBOSITY_NONE 		0
 #define VERBOSITY_DEFAULT 	1
@@ -21,146 +21,110 @@
 #define VERBOSITY_ALL		3
 
 namespace ppee{
-	/*
-	 * Time-sensitive/insensitive Generic Argument Unit class
-	 * This class is to initialize a piece of data which is sensitive to time.
-	 * It means, this type of data is not open to race conditions.
-	 * If two writes occur simultaneously, error(s) or warning(s) may be thrown.
-	 *
-	 * Time-sensitive units are not allowed to become race conditioned.
-	 * Two "processes" can read but not write to the same unit simultaneously.
-	 *
-	 * Time-insensitive units are allowed to become race conditioned and
-	 * such race conditions are handled so that the program does not malbehave.
-	 * Two "processes" can read and/or write to the same unit simutaneously, 
-	 * and each of such "processes" is going to execute in an ordered manner.
-	 */
-	class GenericArgumentUnit{
-		private:
-		// pointer to the unit of arguments; should be cast to a non-void pointer by the user
-		void* m_args;
-		// timestamp of the most recently occured change on this data unit
-		size_t m_timestamp;
-		// time sensitivity: false - insensitive, true - sensitive
-		bool m_sensitivity;
+	template<class T>
+	class GenericFunction;
 
-		public:
-		GenericArgumentUnit(void* args=nullptr, bool sensitivity=false): m_args(args), m_timestamp(0), m_sensitivity(sensitivity) {}
-		~GenericArgumentUnit(){}
-
-		inline void*& get() { return m_args; }
-		inline void* get() const { return m_args; }
-		inline void*& arg() { return m_args; }
-		inline void* arg() const { return m_args; }
-		inline size_t& timestamp() { return m_timestamp; }
-		inline const size_t& timestamp() const { return m_timestamp; }
-		inline bool& sensitivity() { return m_sensitivity; }
-		inline const bool& sensitivity() const { return m_sensitivity; }
-	};
-
-	/*
-	 * Generic Argument class
-	 */
-	class GenericArgument{
-		using alloc_t = bool;
-
-		private:
-		std::vector<GenericArgumentUnit*> m_args;
-		GenericArgumentUnit m_args_unit;
-		alloc_t m_alloc_type;
-
-		public:
-		GenericArgument(alloc_t alloc_type=ALLOC_TYPE_STACK): m_alloc_type(alloc_type) {}
-		~GenericArgument(){
-			if(m_alloc_type == ALLOC_TYPE_HEAP){
-				for(auto& arg: m_args)
-					delete arg;
-			}
-		}
-
-		inline void add(GenericArgumentUnit* argument_unit, bool sensitivity=INSENSITIVE) { 
-			if(m_alloc_type == ALLOC_TYPE_HEAP){
-				printf("[WARNING]: GenericArgumentUnit* couldn't be added due to (stack) allocation ambiguity!\n");
-				return ;
-			}
-			argument_unit->sensitivity() = sensitivity;
-			m_args.push_back(argument_unit); 
-		}
-		inline void add(void* args, bool sensitivity=INSENSITIVE) {
-			if(m_alloc_type == ALLOC_TYPE_STACK){
-				printf("[WARNING]: GenericArgumentUnit couldn't be added due to (heap) allocation ambiguity!\n");
-				return ;
-			}
-			else if(!args){
-				printf("[WARNING]: GenericArgumentUnit couldn't be added due to NULL args!\n");
-				return ;
-			}
-			m_args.push_back(new GenericArgumentUnit(args, sensitivity));
-		}
-		inline bool remove(size_t index=-1 /* last element */) { 
-			if(index == -1)	m_args.pop_back(); 
-			else if(index < m_args.size()) 	m_args.erase(m_args.begin()+index);
-			else 	return false;
-			return true;
-		}
-		inline void clear() { m_args.clear(); }
-
-		/* API for GAaGS (Generic Argument as Generic State) */
-		// sets the generic state
-		inline void set(void* args, bool sensitivity=INSENSITIVE) {
-			m_args_unit.arg() = args;
-			m_args.clear();
-			m_args.push_back(&m_args_unit);
-		}
-		// unsets the generic state
-		inline void unset() { m_args_unit.arg() = nullptr; }
-		/* - - - - - - - - - - - - - - - - - - - - - - - - - */
-
-		inline size_t count() const { return m_args.size(); }
-		// returns a readable argument unit which does not violate time-(in)sensitivy
-		// timestamp - (optional) used for debugging purposes
-		inline const GenericArgumentUnit* get_readable(size_t index, size_t timestamp=-1 /* optional */) const { 
-			if(index >= m_args.size())
-				// Index out of range handler
-				return nullptr;
-			if(timestamp != -1) m_args[index]->timestamp() = timestamp;
-			return m_args[index]; 
-		}
-		
-		// 'get_readable' function for Generic State
-		inline const void* get_readable() const { 
-			return get_readable(0)->arg();
-		}
-
-		// returns a writable argument unit which may violate time-sensitivity (if set)
-		// if time-sensitive unit is race-conditioned then returns nullptr, otherwise a pointer to the unit
-		inline GenericArgumentUnit* get_writable(size_t index, size_t timestamp) { 
-			if(index >= m_args.size()){
-				// Index out of range handler
-				return nullptr;
-			}
-			if(m_args[index]->sensitivity() && m_args[index]->timestamp() == timestamp){
-				// Race condition handler
-				return nullptr;
-			}
-			m_args[index]->timestamp() = timestamp;
-			return m_args[index];
-		}
-		// 'get_writable' function for Generic State
-		inline void* get_writable(size_t timestamp) { 
-			return get_writable(0, timestamp)->arg();
-		}
-		// 'get_writable' function for time-insensitive Generic State
-		inline void* get_writable() {
-			auto tmp = get_writable(0, 0);
-			if(tmp->sensitivity() == SENSITIVE){
-				// Access denied
-				return nullptr;
-			}
-			return tmp->arg();
-		}
+	template<class T>
+	struct GenericArgumentProperty{
+		size_t read_timestamp, write_timestamp;
+		bool read_sensitivity, write_sensitivity;
+		std::pair<bool /* locked */, const GenericFunction<T>* /* function that has the key */> status;
+		size_t lock_timestamp, unlock_timestamp;
 	};
 	
+	/* 
+	 * Generic Argument
+	 */
+	template<class T>
+	class GenericArgument{
+		using sens_t = char;
+
+		private:
+		std::vector<std::pair<T /* arg */, GenericArgumentProperty<T> /* property */>> m_args;
+
+		public:
+		/* Init API */
+		inline void add(const T& arg, sens_t sensitivity) { 
+			if(sensitivity < INSENSITIVE || sensitivity > SENSITIVE_ALL)
+				return ;
+
+			m_args.push_back(
+					std::make_pair(
+						arg, 
+						GenericArgumentProperty<T>{ 
+							0, 0, 
+							sensitivity==SENSITIVE_READ || sensitivity==SENSITIVE_ALL, 
+							sensitivity==SENSITIVE_WRITE || sensitivity==SENSITIVE_ALL, 
+							std::make_pair(false, nullptr), 
+							(size_t)-1, (size_t)-1
+						}));
+		}
+
+		inline void remove(size_t index=-1) {
+			if(index >= m_args.size())
+				m_args.pop_back();
+			else
+				m_args.erase(m_args.begin()+index);
+		}
+
+		inline size_t count() const { return m_args.size(); }
+
+		inline void clear() { m_args.clear(); }
+
+		/* Read/Write API */
+		const T* get_readable(size_t index, size_t timestamp){
+			if(index >= m_args.size())
+					return nullptr;
+			if(m_args[index].second.read_sensitivity && 
+			   m_args[index].second.read_timestamp >= timestamp)
+				return nullptr;
+			m_args[index].second.read_timestamp = timestamp;
+			return &m_args[index].first;
+		}
+
+		const T* get_readable(size_t timestamp){
+			return get_readable(0, timestamp);
+		}
+
+		T* get_writable(size_t index, size_t timestamp){
+			if(index >= m_args.size())
+				return nullptr;
+			if(m_args[index].second.write_sensitivity && 
+			   m_args[index].second.write_timestamp >= timestamp)
+				return nullptr;
+			m_args[index].second.write_timestamp = timestamp;
+			return &m_args[index].first;
+		}
+
+		T* get_writable(size_t timestamp){
+			return get_writable(0, timestamp);
+		}
+
+		/* (Un)Locking API */
+		const std::pair<bool, const GenericFunction<T>*>* lock_status(size_t index) const { 
+			if(index >= m_args.size())
+				return nullptr;
+			return &(m_args[index].second.status);
+		}
+
+		bool lock(size_t index, const GenericFunction<T>* generic_function, size_t timestamp){
+			if(index >= m_args.size() || !generic_function || m_args[index].second.status.first)
+				return false;
+			m_args[index].second.status = { true, generic_function };
+			m_args[index].second.lock_timestamp = timestamp;
+			return true;
+		}
+
+		bool unlock(size_t index, const GenericFunction<T>* generic_function, size_t timestamp){
+			if(index >= m_args.size() || !generic_function || !m_args[index].second.status.first)
+				return false;
+			m_args[index].second.status = { false, generic_function };
+			m_args[index].second.unlock_timestamp = timestamp;
+			return true;
+		}
+	};
+
+	template<class>
 	class Engine;
 
 	/*
@@ -169,14 +133,14 @@ namespace ppee{
 	 * 'run' virt. method has to be defined by the user since this function is called 
 	 * through this function by the PPEE.
 	 */
+	template<class T>
 	class GenericFunction{
 		static size_t generic_function_count;
-		static std::map<std::string /* name */, size_t /* id */> function_reservations; // NOT USED
 
 		protected:
 		size_t m_id;
 		std::string m_name;
-		GenericArgument m_state;
+		GenericArgument<T> m_state;
 
 		public:
 		GenericFunction(const std::string& name=""):
@@ -187,22 +151,21 @@ namespace ppee{
 		}
 		virtual ~GenericFunction(){}
 
-		// This function has to be implemeted explicitly by the user!
-		// It is used to initialize the internal state of the function (recommended if internal state matters)
-		virtual void init(){} /* = 0; */
-		virtual void tear(){} /* = 0; */
+		inline size_t id() const { return m_id; }
+		inline std::string name() const { return m_name; }
 
 		// This function has to be implemented explicitly by the user!
 		// Returns the number of modified generic argument units (optional)
-		virtual size_t run(GenericArgument& generic_argument, const Engine* const engine) = 0;
+		virtual size_t run(GenericArgument<T>& generic_argument, const Engine<T>* const engine) = 0;
 	};
 
-	size_t GenericFunction::generic_function_count = 0;
-	std::map<std::string, size_t> GenericFunction::function_reservations = std::map<std::string, size_t>();
+	template<class T>
+	size_t GenericFunction<T>::generic_function_count = 0;
 	
 	enum class ExecutionStyle {
-		DEFAULT = 0,
-		CYCLIC
+		DEFAULT = 0,	// a -> b -> c
+		CYCLIC,			// a -> b -> c -> a -> b -> c -> ...
+		REVERSE			// a -> b -> c -> b -> a -> ...
 	};
 
 	/*
@@ -210,22 +173,18 @@ namespace ppee{
 	 * Execution Path defines the timestamps in which generic functions are going
 	 * to be executed.
 	 */
+	template<class T>
 	class ExecutionGraph{
 		private:
-		std::map<size_t /* timestamp */, std::vector<GenericFunction*> /* functions */> m_function_timestamps;
-		std::vector<std::vector<GenericFunction*>> m_generic_functions;
+		std::map<size_t /* timestamp */, std::vector<GenericFunction<T>*> /* functions */> m_function_timestamps;
+		std::vector<std::vector<GenericFunction<T>*>> m_generic_functions;
 		// ExecutionGraph *prev, *next;
 		size_t m_index = 0, m_min_timestamp = 0, m_max_timestamp = 0;
 		ExecutionStyle m_execution_style = ExecutionStyle::DEFAULT;
 		bool m_randomized_execution = false;
 
 		public:
-		void add(GenericFunction* function, size_t timestamp=-1){
-/* Unnecessary init & tear
-#ifdef PRECOMPILER_FUNCTION_INITIALIZATION
-			function->init();
-#endif
-*/
+		void add(GenericFunction<T>* function, size_t timestamp=-1){
 			if(timestamp == -1){
 				m_function_timestamps[++m_max_timestamp].push_back(function);
 			} else{
@@ -242,18 +201,12 @@ namespace ppee{
 			m_generic_functions.clear();
 			for(auto it=m_function_timestamps.begin(); it!=m_function_timestamps.end(); ++it){
 				if(randomize)	std::random_shuffle(it->second.begin(), it->second.end());
-/* Unnecessary init & tear
-#ifndef PRECOMPILER_FUNCTION_INITIALIZATION
-				for(auto it2=it->second.begin(); it2!=it->second.end(); ++it2)
-					(*it2)->init();
-#endif
-*/
 				m_generic_functions.push_back(it->second);
 			}
 			
 		}
 		
-		void compile(const std::vector<std::vector<GenericFunction*>> generic_functions, bool randomize=false){
+		void compile(const std::vector<std::vector<GenericFunction<T>*>> generic_functions, bool randomize=false){
 			m_generic_functions = generic_functions;
 			for(auto it=m_generic_functions.begin(); it!=m_generic_functions.end(); ++it){
 				if(randomize)
@@ -266,7 +219,7 @@ namespace ppee{
 		inline ExecutionStyle& execution_style() { return m_execution_style; }
 		inline bool& randomized_execution() { return m_randomized_execution; }
 
-		std::vector<GenericFunction*>* get_curr(int direction=1){
+		std::vector<GenericFunction<T>*>* get_curr(int direction=1){
 			if(m_index == -1) return nullptr;
 
 			if(m_randomized_execution)
@@ -276,11 +229,13 @@ namespace ppee{
 			if(m_execution_style == ExecutionStyle::CYCLIC || 
 			  (m_execution_style == ExecutionStyle::DEFAULT && m_index+direction < m_generic_functions.size())){
 				m_index = (m_index + direction) % m_generic_functions.size();
+			} else if(m_execution_style == ExecutionStyle::REVERSE){
+				// TODO
 			} else m_index = -1;
 			return generic_function_vec;
 		}
 
-		std::vector<GenericFunction*>* get(size_t index){
+		std::vector<GenericFunction<T>*>* get(size_t index){
 			if(index >= m_generic_functions.size()){
 				// Index out of range handling
 				return nullptr;
@@ -291,7 +246,7 @@ namespace ppee{
 			return &m_generic_functions[index];
 		}
 
-		std::vector<GenericFunction*>* get_prev(){
+		std::vector<GenericFunction<T>*>* get_prev(){
 			size_t tmp = m_index;
 			m_index = (m_index-1) % m_generic_functions.size();
 			if(m_execution_style == ExecutionStyle::DEFAULT && !tmp){
@@ -300,7 +255,7 @@ namespace ppee{
 			return get((tmp-1) % m_generic_functions.size());
 		}
 
-		std::vector<GenericFunction*>* get_next(){
+		std::vector<GenericFunction<T>*>* get_next(){
 			size_t tmp = m_index;
 			m_index = (m_index+1) % m_generic_functions.size();
 			if(m_execution_style == ExecutionStyle::DEFAULT && tmp+1 == m_generic_functions.size()){
@@ -312,12 +267,16 @@ namespace ppee{
 
 	void log(const char* restrict_format, ...);
 
+	/*
+	 * Engine class
+	 */
+	template<class T>
 	class Engine{
 		friend void log(const char* restrict_format, ...);
 		
 		private:
-		ExecutionGraph* m_execution_graph;
-		GenericArgument* m_generic_argument;
+		ExecutionGraph<T>* m_execution_graph;
+		GenericArgument<T>* m_generic_argument;
 		size_t m_timestamp;
 
 		// file path into which logging info will be put
@@ -339,7 +298,7 @@ namespace ppee{
 		}opts;
 
 		public:
-		Engine(ExecutionGraph* execution_graph, GenericArgument* generic_argument, const std::string& log_file_path="default.log"):
+		Engine(ExecutionGraph<T>* execution_graph, GenericArgument<T>* generic_argument, const std::string& log_file_path="default.log"):
 			m_execution_graph(execution_graph),
 			m_generic_argument(generic_argument),
 			m_timestamp(0),
@@ -350,7 +309,8 @@ namespace ppee{
 			this->log_file_path(log_file_path);
 		}
 		~Engine(){
-			fclose(m_log_file);
+			if(m_log_file != stdout && m_log_file != stderr)
+				fclose(m_log_file);
 		}
 
 		inline size_t timestamp() const { return m_timestamp; }
@@ -388,7 +348,34 @@ namespace ppee{
 		// runs for n iterations
 		int iterate(size_t n=1){
 			if(is_invalid()) return -1;
+			return iterate_unsafely(n);
+		}
+		// iterates till an error occurs
+		int iterate_all(){
+			// TODO
+			int ret_val = 0;
+			while(!is_invalid() && is_iterable() && ret_val != -1){
+				ret_val = iterate_unsafely();
+				if(ret_val == -1){
+					;
+				} else if(ret_val == -2){
+					;
+				} else if(ret_val < -2){
+					;
+				}
+			}
+			return 0;
+		}
+		// runs till the end of execution; may not halt for a long time
+		int run(){
+			// TODO
+			return 0;
+		}
 
+		private:
+		inline bool is_invalid() const { return !m_execution_graph || !m_generic_argument; }
+		inline bool is_iterable() const { return false; }
+		int iterate_unsafely(size_t n=1){
 			while(n--){
 				++m_timestamp;
 				// fprintf(stdout, " > Timestamp: %zu\n", m_timestamp);
@@ -415,22 +402,6 @@ namespace ppee{
 			}
 			return n;
 		}
-		// iterates till an error occurs
-		int iterate_all(){
-			// TODO
-			while(!is_invalid()){
-				;
-			}
-			return 0;
-		}
-		// runs till the end of execution; may not halt for a long time
-		int run(){
-			// TODO
-			return 0;
-		}
-
-		private:
-		inline bool is_invalid() const { return !m_execution_graph || !m_generic_argument; }
 	};
 }
 

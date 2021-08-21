@@ -7,25 +7,40 @@
 using namespace std;
 using namespace ppee;
 
-class MyFunction: public GenericFunction{
+class MyFunction: public GenericFunction<float>{
 	public:
 	MyFunction(){
 		// initial internal state
 	}
 	~MyFunction(){}
 
-	virtual size_t run(GenericArgument& generic_argument, const Engine* const engine){
-		// ...
-		// printf("ID[%zu] | Number of argument units: %zu\n", m_id, generic_argument.count());
+	virtual size_t run(GenericArgument<float>& generic_argument, const Engine<float>* const engine){
+		size_t ts = engine->timestamp();
+
+		// fetch the readable argument
+		const float* rarg = generic_argument.get_readable(m_id, ts);
+		if(!rarg)	return -1;
+		
+		// do processing with the rarg
+		printf("ID[%zu] TS[%zu] | rarg: %f\n", m_id, ts, *rarg);
+		
+		// fetch the writable argument
+		float* warg = generic_argument.get_writable(m_id, ts);
+		if(!warg)	return -1;
+
+		// modify the warg
+		*warg += ts * (m_id + 1);
+
+		// logging
 		engine->log(
 				[](const void* const args) -> bool {
-					auto engine = (Engine*)args;
+					auto engine = (Engine<float>*)args;
 					return (engine->timestamp() == 1 || 
 							!(engine->timestamp() % engine->opts.timestamp_steps));
 				}, 
 				engine, 
-				"ID[%zu] TS[%zu]| Number of argument units: %zu\n", 
-				m_id, engine->timestamp(), generic_argument.count()
+				"ID[%zu] TS[%zu]| Number of argument units: %zu, rarg: %.3f\n", 
+				m_id, ts, generic_argument.count(), *rarg
 		);
 		
 		return 0;
@@ -33,15 +48,16 @@ class MyFunction: public GenericFunction{
 };
 
 int main(){
+	using T = float;
+	
 	// Resources creation
-	float data[4] = { 0 };
+	T data[4] = { 0 };
 	printf("Resource creation: succ\n");
 
 	// Converting resources to a single Generic Argument
-	// This Generic Argument stores heap-allocated elements
-	GenericArgument generic_argument(ALLOC_TYPE_HEAP);
+	GenericArgument<T> generic_argument;
 	for(int i=0; i<4; ++i)
-		generic_argument.add(data+i, i%2 ? SENSITIVE : INSENSITIVE);
+		generic_argument.add(data[i], i%2 ? SENSITIVE_WRITE : INSENSITIVE);
 	printf("Converting to GenericArgument: succ\n");
 
 	// Customized Generic Functions creation
@@ -49,7 +65,7 @@ int main(){
 	printf("GenericFunction creation: succ\n");
 
 	// Execution Graph creation & adding Generic Functions
-	ExecutionGraph execution_graph;
+	ExecutionGraph<T> execution_graph;
 	execution_graph.execution_style() = ExecutionStyle::CYCLIC;
 	execution_graph.randomized_execution() = false;
 	for(int i=0; i<4; ++i){
@@ -62,7 +78,7 @@ int main(){
 	printf("ExecutionGraph complication: succ\n");
 
 	// Engine
-	Engine engine(&execution_graph, &generic_argument);
+	Engine<T> engine(&execution_graph, &generic_argument);
 	engine.opts.verbosity = VERBOSITY_ALL;
 	engine.opts.timestamp_steps = 3;
 	engine.log_file_path("test.log");
