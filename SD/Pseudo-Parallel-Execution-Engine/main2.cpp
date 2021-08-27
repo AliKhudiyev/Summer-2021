@@ -54,18 +54,25 @@ int main(){
 	T data[4] = { 0 };
 	printf("Resource creation: succ\n");
 
+	// Engine
+	Engine<T> engine;
+	engine.opts.verbosity = VERBOSITY_ALL;
+	engine.opts.timestamp_steps = 3;
+	engine.log_file_path("test.log");
+	printf("Engine init: succ\n");
+
 	// Converting resources to a single Generic Argument
-	GenericArgument<T> generic_argument;
+	GenericArgument<T>& generic_argument = engine.generic_argument();
 	for(int i=0; i<4; ++i)
 		generic_argument.add(data[i], i%2 ? SENSITIVE_WRITE : INSENSITIVE);
 	printf("Converting to GenericArgument: succ\n");
 
 	// Customized Generic Functions creation
 	MyFunction funcs[4];
-	printf("GenericFunction creation: succ\n");
+	printf("GenericFunctions creation: succ\n");
 
 	// Execution Graph creation & adding Generic Functions
-	ExecutionGraph<T> execution_graph;
+	ExecutionGraph<T>& execution_graph = engine.execution_graph();
 	execution_graph.execution_style() = ExecutionStyle::CYCLIC;
 	execution_graph.randomized_execution() = false;
 	for(int i=0; i<4; ++i){
@@ -75,14 +82,9 @@ int main(){
 	}
 	printf("ExecutionGraph init: succ\n");
 	execution_graph.compile();
-	printf("ExecutionGraph complication: succ\n");
+	printf("ExecutionGraph compilation: succ\n");
 
-	// Engine
-	Engine<T> engine(&execution_graph, &generic_argument);
-	engine.opts.verbosity = VERBOSITY_ALL;
-	engine.opts.timestamp_steps = 3;
-	engine.log_file_path("test.log");
-	printf("Engine init: succ\n");
+	printf("Iterating...\n");
 	engine.iterate(8);
 	printf("Terminated: succ\n");
 

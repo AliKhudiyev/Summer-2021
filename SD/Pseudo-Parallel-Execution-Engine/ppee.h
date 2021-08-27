@@ -8,6 +8,7 @@
 #include <cstdarg>
 #include <algorithm>
 #include <random>
+#include <cmath>
 
 
 #define INSENSITIVE 	0
@@ -48,6 +49,20 @@ namespace ppee{
 			if(sensitivity < INSENSITIVE || sensitivity > SENSITIVE_ALL)
 				return ;
 
+			m_args.push_back(
+					std::make_pair(
+						arg, 
+						GenericArgumentProperty<T>{ 
+							0, 0, 
+							sensitivity==SENSITIVE_READ || sensitivity==SENSITIVE_ALL, 
+							sensitivity==SENSITIVE_WRITE || sensitivity==SENSITIVE_ALL, 
+							std::make_pair(false, nullptr), 
+							(size_t)-1, (size_t)-1
+						}));
+		}
+
+		inline void set(const T& arg, sens_t sensitivity){
+			m_args.clear();
 			m_args.push_back(
 					std::make_pair(
 						arg, 
@@ -137,13 +152,13 @@ namespace ppee{
 	class GenericFunction{
 		static size_t generic_function_count;
 
-		protected:
+		private:
 		size_t m_id;
-		std::string m_name;
+		mutable std::string m_name;
 		GenericArgument<T> m_state;
 
 		public:
-		GenericFunction(const std::string& name=""):
+		explicit GenericFunction(const std::string& name=""):
 			m_id(GenericFunction::generic_function_count++),
 			m_name(name)
 		{
@@ -151,8 +166,9 @@ namespace ppee{
 		}
 		virtual ~GenericFunction(){}
 
-		inline size_t id() const { return m_id; }
-		inline std::string name() const { return m_name; }
+		inline const size_t& id() const { return m_id; }
+		inline std::string& name() const { return m_name; }
+		inline virtual GenericArgument<T>& state() { return m_state; }
 
 		// This function has to be implemented explicitly by the user!
 		// Returns the number of modified generic argument units (optional)
@@ -162,10 +178,11 @@ namespace ppee{
 	template<class T>
 	size_t GenericFunction<T>::generic_function_count = 0;
 	
-	enum class ExecutionStyle {
-		DEFAULT = 0,	// a -> b -> c
-		CYCLIC,			// a -> b -> c -> a -> b -> c -> ...
-		REVERSE			// a -> b -> c -> b -> a -> ...
+	enum class ExecutionStyle {		// a -> b -> c
+		DEFAULT = 0,				// a -> b -> c
+		CYCLIC,						// a -> b -> c -> a -> b -> c -> ...
+		REVERSED,					// a -> b -> c -> b -> a -> ...
+		RANDOM,						// b -> a -> c -> c -> b -> c -> a -> ...
 	};
 
 	/*
@@ -185,12 +202,24 @@ namespace ppee{
 
 		public:
 		void add(GenericFunction<T>* function, size_t timestamp=-1){
+			if(!function) return;
+
 			if(timestamp == -1){
 				m_function_timestamps[++m_max_timestamp].push_back(function);
 			} else{
 				m_function_timestamps[timestamp].push_back(function);
 				if(timestamp > m_max_timestamp)	m_max_timestamp = timestamp;
 			}	
+		}
+
+		void remove(size_t timestamp, const GenericFunction<T>* function=nullptr){
+			auto& generic_function_vec_it = m_generic_functions.find(timestamp);
+			if(!function){
+				m_generic_functions.erase(generic_function_vec_it);
+			} else{
+				auto generic_function_it = generic_function_vec_it->find(function);
+				generic_function_vec_it->erase(generic_function_it);
+			}
 		}
 
 		void clear(){
@@ -219,6 +248,7 @@ namespace ppee{
 		inline ExecutionStyle& execution_style() { return m_execution_style; }
 		inline bool& randomized_execution() { return m_randomized_execution; }
 
+		// recommended: this function respects the execution style
 		std::vector<GenericFunction<T>*>* get_curr(int direction=1){
 			if(m_index == -1) return nullptr;
 
@@ -229,12 +259,28 @@ namespace ppee{
 			if(m_execution_style == ExecutionStyle::CYCLIC || 
 			  (m_execution_style == ExecutionStyle::DEFAULT && m_index+direction < m_generic_functions.size())){
 				m_index = (m_index + direction) % m_generic_functions.size();
-			} else if(m_execution_style == ExecutionStyle::REVERSE){
-				// TODO
+			} else if(m_execution_style == ExecutionStyle::REVERSED){
+				static char dir_sign = 1;
+
+				size_t gap = (dir_sign == 1 ? m_generic_functions.size() - 1 - m_index : m_index);
+				size_t count = (abs(direction) - gap) / (m_generic_functions.size() - 1);
+				size_t dir = (abs(direction) - gap) % (m_generic_functions.size() - 1);
+				if(gap < abs(direction) && !(count % 2))	dir_sign *= -1;
+
+				m_index = (gap >= abs(direction) ? 
+					m_index + dir_sign * abs(direction) : 
+					(dir_sign == 1 ?
+					 	dir :
+						m_generic_functions.size() - 1 - dir
+					)
+				);
+			} else if(m_execution_style == ExecutionStyle::RANDOM){
+				m_index = rand() % m_generic_functions.size();
 			} else m_index = -1;
 			return generic_function_vec;
 		}
 
+		// warning: this function doesn't respect the execution sytle
 		std::vector<GenericFunction<T>*>* get(size_t index){
 			if(index >= m_generic_functions.size()){
 				// Index out of range handling
@@ -246,6 +292,7 @@ namespace ppee{
 			return &m_generic_functions[index];
 		}
 
+		// warning: this function doesn't respect the execution sytle
 		std::vector<GenericFunction<T>*>* get_prev(){
 			size_t tmp = m_index;
 			m_index = (m_index-1) % m_generic_functions.size();
@@ -255,6 +302,7 @@ namespace ppee{
 			return get((tmp-1) % m_generic_functions.size());
 		}
 
+		// warning: this function doesn't respect the execution sytle
 		std::vector<GenericFunction<T>*>* get_next(){
 			size_t tmp = m_index;
 			m_index = (m_index+1) % m_generic_functions.size();
@@ -275,8 +323,8 @@ namespace ppee{
 		friend void log(const char* restrict_format, ...);
 		
 		private:
-		ExecutionGraph<T>* m_execution_graph;
-		GenericArgument<T>* m_generic_argument;
+		ExecutionGraph<T> m_execution_graph;
+		GenericArgument<T> m_generic_argument;
 		size_t m_timestamp;
 
 		// file path into which logging info will be put
@@ -298,26 +346,42 @@ namespace ppee{
 		}opts;
 
 		public:
-		Engine(ExecutionGraph<T>* execution_graph, GenericArgument<T>* generic_argument, const std::string& log_file_path="default.log"):
+		Engine():
+			m_timestamp(0),
+			m_log_file_path("default.log"),
+			m_log_file(nullptr),
+			opts({ VERBOSITY_DEFAULT, 1 })
+		{
+			log_file_path(m_log_file_path);
+		}
+		Engine(const ExecutionGraph<T>& execution_graph, const GenericArgument<T>& generic_argument, const std::string& log_file_path="default.log"):
 			m_execution_graph(execution_graph),
 			m_generic_argument(generic_argument),
 			m_timestamp(0),
 			m_log_file_path(log_file_path),
+			m_log_file(nullptr),
 			opts({ VERBOSITY_DEFAULT, 1 })
 		{
 			// ...
 			this->log_file_path(log_file_path);
 		}
 		~Engine(){
-			if(m_log_file != stdout && m_log_file != stderr)
+			if(!m_log_file && m_log_file != stdout && m_log_file != stderr)
 				fclose(m_log_file);
 		}
 
+		inline ExecutionGraph<T>& execution_graph() { return m_execution_graph; }
+		inline GenericArgument<T>& generic_argument() { return m_generic_argument; }
 		inline size_t timestamp() const { return m_timestamp; }
 		inline const Diagnostics& diagnostics() const { return m_diagnostics; }
 
 		bool log_file_path(const std::string& file_path){
 			m_log_file_path = file_path;
+			if(m_log_file && m_log_file != stdout && m_log_file != stderr){
+				fclose(m_log_file);
+				m_log_file = nullptr;
+			}
+
 			m_log_file = fopen(m_log_file_path.c_str(), "w");
 			if(!m_log_file){
 				printf("ERROR: Log file %s couldn't be opened!\n", m_log_file_path.c_str());
@@ -373,8 +437,9 @@ namespace ppee{
 		}
 
 		private:
-		inline bool is_invalid() const { return !m_execution_graph || !m_generic_argument; }
+		inline bool is_invalid() const { return false; }
 		inline bool is_iterable() const { return false; }
+
 		int iterate_unsafely(size_t n=1){
 			while(n--){
 				++m_timestamp;
@@ -393,15 +458,15 @@ namespace ppee{
 					fprintf(m_log_file, "= = = = = = = = =\n");
 				}
 
-				auto generic_functions = m_execution_graph->get_curr();	
+				auto generic_functions = m_execution_graph.get_curr();	
 				if(!generic_functions)	return n;
 
 				for(size_t i=0; i<generic_functions->size(); ++i){
-					(*generic_functions)[i]->run(*m_generic_argument, this);
+					(*generic_functions)[i]->run(m_generic_argument, this);
 				}
 			}
 			return n;
 		}
 	};
 }
-
+ 
