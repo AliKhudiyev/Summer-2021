@@ -5,6 +5,8 @@
 #include <vector>
 #include <cmath>
 #include <string.h>
+#include <alloca.h>
+#include <stdlib.h>
 #include <cstdint>
 #include <stddef.h>
 #include <cassert>
@@ -75,6 +77,9 @@ class BitStream{
 		inline size_t get_mei() const{	// mask effective index (7 6 5 4 3 2 1 0)
 			return is_reverse() ? 7 - (offset % 8) : offset % 8;
 		}
+		inline size_t get_index() const{	// true bit index
+			return is_reverse() ? offset : m_cbs->m_bit_count - offset;
+		}
 
 		public:
 		iterator_base():
@@ -115,6 +120,8 @@ class BitStream{
 
 		iterator_base& operator=(const iterator_base& it);
 		iterator_base& operator=(bool bit);
+
+		size_t operator-(const iterator_base& it) const;
 
 		protected:
 		// TODO: optimize
@@ -159,13 +166,31 @@ class BitStream{
 			auto it = is_reverse() ? m_bs->m_bytes.end() : m_bs->m_bytes.begin();
 			m_bs->m_bytes.insert(it, n, 0);
 		}
+	}m_read_iterator, m_write_iterator;
+
+	struct const_iterator_base: public iterator_base{
+		const_iterator_base(): iterator_base() {}
+		~const_iterator_base() = default;
+
+		protected:
+		const_iterator_base(const BitStream* bs_, size_t offset_, uint8_t state_):
+			iterator_base(bs_, offset_, state_) {}
+	};
+
+	struct dynamic_iterator_base: public iterator_base{
+		dynamic_iterator_base(): iterator_base() {}
+		~dynamic_iterator_base() = default;
+
+		protected:
+		dynamic_iterator_base(BitStream* bs_, size_t offset_, uint8_t state_):
+			iterator_base(bs_, offset_, state_) {}
 	};
 
 	public:
-	struct iterator: public iterator_base{
+	struct iterator: public dynamic_iterator_base{
 		friend class BitStream;
 
-		iterator(): iterator_base() {}
+		iterator(): dynamic_iterator_base() {}
 		~iterator() = default;
 
 		iterator operator+(size_t offset) const;
@@ -180,18 +205,20 @@ class BitStream{
 		iterator& operator++(int);
 		iterator& operator--(int);
 
-		iterator& operator=(const iterator_base& it);
+		iterator& operator=(const iterator& it);
 		iterator& operator=(bool bit);
+
+		size_t operator-(const iterator_base& it) const;
 
 		protected:
 		iterator(BitStream* bs_, size_t offset_, uint8_t state_):
-			iterator_base(bs_, offset_, state_) {}
+			dynamic_iterator_base(bs_, offset_, state_) {}
 	};
 
-	struct const_iterator: public iterator_base{
+	struct const_iterator: public const_iterator_base{
 		friend class BitStream;
 
-		const_iterator(): iterator_base() {}
+		const_iterator(): const_iterator_base() {}
 		~const_iterator() = default;
 
 		const_iterator operator+(size_t offset) const;
@@ -209,15 +236,17 @@ class BitStream{
 		const_iterator& operator=(const iterator_base& it);
 		const_iterator& operator=(bool bit);
 
+		size_t operator-(const iterator_base& it) const;
+
 		protected:
 		const_iterator(const BitStream* bs_, size_t offset_, uint8_t state_):
-			iterator_base(bs_, offset_, state_) {}
+			const_iterator_base(bs_, offset_, state_) {}
 	};
 
-	struct reverse_iterator: public iterator_base{
+	struct reverse_iterator: public dynamic_iterator_base{
 		friend class BitStream;
 
-		reverse_iterator(): iterator_base() {}
+		reverse_iterator(): dynamic_iterator_base() {}
 		~reverse_iterator() = default;
 
 		reverse_iterator operator+(size_t offset) const;
@@ -235,15 +264,17 @@ class BitStream{
 		reverse_iterator& operator=(const iterator_base& it);
 		reverse_iterator& operator=(bool bit);
 
+		size_t operator-(const iterator_base& it) const;
+
 		protected:
 		reverse_iterator(BitStream* bs_, size_t offset_, uint8_t state_):
-			iterator_base(bs_, offset_, state_) {}
+			dynamic_iterator_base(bs_, offset_, state_) {}
 	};
 
-	struct const_reverse_iterator: public iterator_base{
+	struct const_reverse_iterator: public const_iterator_base{
 		friend class BitStream;
 
-		const_reverse_iterator(): iterator_base() {}
+		const_reverse_iterator(): const_iterator_base() {}
 		~const_reverse_iterator() = default;
 
 		const_reverse_iterator operator+(size_t offset) const;
@@ -261,9 +292,11 @@ class BitStream{
 		const_reverse_iterator& operator=(const iterator_base& it);
 		const_reverse_iterator& operator=(bool bit);
 
+		size_t operator-(const iterator_base& it) const;
+
 		protected:
 		const_reverse_iterator(const BitStream* bs_, size_t offset_, size_t state_):
-			iterator_base(bs_, offset_, state_) {}
+			const_iterator_base(bs_, offset_, state_) {}
 	};
 
 	public:
@@ -315,6 +348,14 @@ class BitStream{
 	T get(const reverse_iterator it, size_t count=1) const;
 	template<typename T>
 	T get(const const_reverse_iterator it, size_t count=1) const;
+	template<typename T>
+	void get(T* const dest, size_t size, const iterator it, size_t count=1) const;
+	template<typename T>
+	void get(T* const dest, size_t size, const const_iterator it, size_t count=1) const;
+	template<typename T>
+	void get(T* const dest, size_t size, const reverse_iterator it, size_t count=1) const;
+	template<typename T>
+	void get(T* const dest, size_t size, const const_reverse_iterator it, size_t count=1) const;
 	uint8_t get(const iterator it) const;
 	uint8_t get(const reverse_iterator it) const;
 	uint8_t get(const const_iterator it) const;
@@ -357,12 +398,24 @@ class BitStream{
 	void insert(bool bit, size_t offset);
 	void rinsert(bool bit, size_t offset);
 
-	void shift(size_t n, iterator it, 
-			const uint8_t* const src=nullptr, size_t count=0, size_t offset=0);
-	void shift(size_t n, reverse_iterator it, 
-			const uint8_t* const src=nullptr, size_t count=0, size_t offset=0);
-	void shiftr(size_t n=1, uint8_t byte=0);
-	void shiftl(size_t n=1, uint8_t byte=0);
+	void pop(iterator it, size_t offset=-1);
+	void pop(reverse_iterator it, size_t offset=-1);
+	void pop(iterator it1, iterator it2);
+	void pop(reverse_iterator it1, reverse_iterator it2);
+
+	void shift(size_t n, iterator it1, iterator it2);
+	void shift(size_t n, reverse_iterator it1, reverse_iterator it2);
+	void shift(size_t n, iterator it, size_t offset=-1);
+	void shift(size_t n, reverse_iterator it, size_t offset=-1);
+	void shiftr(size_t n=1);
+	void shiftl(size_t n=1);
+
+	void rotate(size_t n, iterator it1, iterator it2);
+	void rotate(size_t n, reverse_iterator it1, reverse_iterator it2);
+	void rotate(size_t n, iterator it, size_t offset=-1);
+	void rotate(size_t n, reverse_iterator it, size_t offset=-1);
+	void rotater(size_t n=1);
+	void rotatel(size_t n=1);
 
 	/* Operators */
 	iterator operator[](size_t offset);
@@ -402,13 +455,92 @@ class BitStream{
 	friend std::istream& operator>>(std::istream& in, BitStream& bs);
 
 	private:
+	/* Args:
+	 *
+	 * src		- where bits are fetched from
+	 * count	- how many bits to fetch
+	 * offset	- from which bit to start fetching (inclusive)
+	 * it		- bit stream iterator
+	 * size		- size of the source `src`
+	 */
 	void set(const uint8_t* const src, size_t count, size_t offset, iterator_base it, size_t size);
 	template<typename T>
 	T get(iterator_base it, size_t count) const;
+	template<typename T>
+	void get(T* const dest, size_t size, iterator_base it, size_t count) const;
 
+	/* Args:
+	 *
+	 * src		- where bits are fetched from
+	 * count	- how many bits to fetch
+	 * offset	- from which bit to start fetching (inclusive)
+	 * it		- bit stream iterator
+	 *
+	 * Pushes bits into the stream by overwriting the existing ones
+	 * if needed. The only time pushing bits does not overwrite
+	 * any other bit is when the given iterator is pointing to either
+	 * end or reversed end of the stream (aka end() and rend()).
+	 * Therefore, pushing bits may overwrite bits if necessary.
+	 */
 	void push(const uint8_t* const src, size_t count, size_t offset, iterator_base it);
+
+	/* Args:
+	 *
+	 * src		- where bits are fetched from
+	 * count	- how many bits to fetch
+	 * offset	- from which bit to start fetching (inclusive)
+	 * it		- bit stream iterator
+	 *
+	 * Inserts bits into the stream by shifting other bits away to open
+	 * up some empty space. If there is no extra space to put shifted
+	 * bits in then new space is allocated and the process carries on.
+	 * Therefore, inserting bits neither overwrites nor loses any bits.
+	 */
 	void insert(const uint8_t* const src, size_t count, size_t offset, iterator_base it);
-	void shift(size_t n, iterator_base it, const uint8_t* const src, size_t count, size_t offset);
+
+	/* Args:
+	 *
+	 * it1 - start iterator
+	 * it2 - stop iterator
+	 *
+	 * Pops bits between two iterators [it1, it2)  and shiftes the stream
+	 * with the same iterators. So, be careful about the iterators!
+	 * To pop a substream of bits between the true indices [start, stop], 
+	 * there are two possible options:
+	 * 		1. pop(rbegin()+start, rbegin()+stop)
+	 * 		2. pop(begin()+size()-stop, begin()+size()-start)
+	 * Although they pop the same substream, the final results are different:
+	 * 		1. The left-most side of bit stream has been shifted to right
+	 * 		2. The right-most side of bit stream has been shifted to left
+	 */
+	void pop(iterator_base it1, iterator_base it2);
+
+	/* Args:
+	 *
+	 * n	- shift amount in bits
+	 * it1	- start iterator
+	 * it2	- stop iterator
+	 *
+	 * Shifts the substream located in between the two iterators [it1, it2).
+	 * The direction of shift depends on the reverseness of given iterators.
+	 * Since two iterators have to have the same reverseness property,
+	 * the substream is shifted in the direction of [it1 -> it2].
+	 * Some bits are shifted out, and therefore, some bits are lost after shifting.
+	 */
+	void shift(size_t n, iterator_base it1, iterator_base it2);
+
+	/* Args:
+	 *
+	 * n	- rotate amount in bits
+	 * it1	- start iterator
+	 * it2	- stop iterator
+	 *
+	 * Rotates the substream located in between the two iterators [it1, it2).
+	 * The direction of rotation depends on the reverseness of given iterators.
+	 * As shifting the direction is that of [it1 -> it2].
+	 * However, rotation preserves all the bits.
+	 */
+	void rotate(size_t n, iterator_base it1, iterator_base it2);
 };
 
 
@@ -515,6 +647,13 @@ bool BitStream::iterator_base::operator*() const{
 	return get();
 }
 
+size_t BitStream::iterator_base::operator-(const iterator_base& it) const{
+	size_t out = -1;
+	if(*this >= it)
+		out = offset - it.offset;
+	return out;
+}
+
 /* BitStream::iterator_base::iterator implementation */
 
 BitStream::iterator BitStream::iterator::operator+(size_t offset) const{
@@ -569,8 +708,7 @@ BitStream::iterator& BitStream::iterator::operator--(int){
 	assert(false);
 }
 
-BitStream::iterator& BitStream::iterator::operator=(const iterator_base& it){
-	printf("= iterator\n");
+BitStream::iterator& BitStream::iterator::operator=(const iterator& it){
 	m_cbs = it.m_cbs;
 	m_bs = it.m_bs;
 	offset = it.offset;
@@ -581,6 +719,13 @@ BitStream::iterator& BitStream::iterator::operator=(const iterator_base& it){
 BitStream::iterator& BitStream::iterator::operator=(bool bit){
 	set(bit);
 	return *this;
+}
+
+size_t BitStream::iterator::operator-(const iterator_base& it) const{
+	size_t out = -1;
+	if(*this >= it)
+		out = offset - it.offset;
+	return out;
 }
 
 /* BitStream::iterator_base::const_iterator implementation */
@@ -648,6 +793,13 @@ BitStream::const_iterator& BitStream::const_iterator::operator=(const iterator_b
 BitStream::const_iterator& BitStream::const_iterator::operator=(bool bit){
 	set(bit);
 	return *this;
+}
+
+size_t BitStream::const_iterator::operator-(const iterator_base& it) const{
+	size_t out = -1;
+	if(*this >= it)
+		out = offset - it.offset;
+	return out;
 }
 
 /* BitStream::iterator_base::reverse_iterator implementation */
@@ -718,6 +870,13 @@ BitStream::reverse_iterator& BitStream::reverse_iterator::operator=(bool bit){
 	return *this;
 }
 
+size_t BitStream::reverse_iterator::operator-(const iterator_base& it) const{
+	size_t out = -1;
+	if(*this >= it)
+		out = offset - it.offset;
+	return out;
+}
+
 /* BitStream::iterator_base::const_reverse_iterator implementation */
 
 BitStream::const_reverse_iterator BitStream::const_reverse_iterator::operator+(size_t offset) const{
@@ -786,6 +945,13 @@ BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator=(
 	return *this;
 }
 
+size_t BitStream::const_reverse_iterator::operator-(const iterator_base& it) const{
+	size_t out = -1;
+	if(*this >= it)
+		out = offset - it.offset;
+	return out;
+}
+
 /* BitStream implementation */
 
 /* > Iterators < */
@@ -827,10 +993,9 @@ inline BitStream::const_reverse_iterator BitStream::crend() const{
 void BitStream::set(const uint8_t* const src, size_t count, size_t offset, iterator_base it, size_t size){
 	assert(count <= size);	// segmentation fault: cannot read pass T object!
 
-	size_t ei = 0;
-	for(size_t i=0; i<count && it.is_valid(); ++i, ++it){
+	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
+		ei = (offset + i) / 8;
 		it.set(BIT_AT(7-i%8, src[ei]));
-		if(!((i + 1) % 8))	++ei;
 	}
 }
 
@@ -876,16 +1041,30 @@ T BitStream::get(iterator_base it, size_t count) const{
 
 	T out;
 	uint8_t* ptr = reinterpret_cast<uint8_t*>(&out);
-	size_t ei = 0;
 
 	memset(reinterpret_cast<void*>(&out), 0, sizeof(T));
-	for(size_t i=0; i<count && it.is_valid(); ++i, ++it){
+	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
+		ei = i / 8;
 		ptr[ei] |= it.get();
 		if(i+1 < count)
 			ptr[ei] <<= 1;
-		if(!((i + 1) % 8))	++ei;
 	}
 	return out;
+}
+
+template<typename T>
+void BitStream::get(T* const dest, size_t size, iterator_base it, size_t count) const{
+	assert(dest && count <= 8*size);	// segmentation fault: cannot write pass array of T!
+
+	uint8_t* ptr = reinterpret_cast<uint8_t*>(dest);
+	memset(ptr, 0, size);
+
+	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
+		ei = i / 8;
+		ptr[ei] |= it.get();
+		if(i+1 < count)
+			ptr[ei] <<= 1;
+	}
 }
 
 template<typename T>
@@ -906,6 +1085,26 @@ T BitStream::get(reverse_iterator it, size_t count) const{
 template<typename T>
 T BitStream::get(const_reverse_iterator it, size_t count) const{
 	return get<T>(static_cast<iterator_base>(it), count);
+}
+
+template<typename T>
+void BitStream::get(T* const dest, size_t size, iterator it, size_t count) const{
+	get<T>(dest, size, static_cast<iterator_base>(it), count);
+}
+
+template<typename T>
+void BitStream::get(T* const dest, size_t size, const_iterator it, size_t count) const{
+	get<T>(dest, size, static_cast<iterator_base>(it), count);
+}
+
+template<typename T>
+void BitStream::get(T* const dest, size_t size, reverse_iterator it, size_t count) const{
+	get<T>(dest, size, static_cast<iterator_base>(it), count);
+}
+
+template<typename T>
+void BitStream::get(T* const dest, size_t size, const_reverse_iterator it, size_t count) const{
+	get<T>(dest, size, static_cast<iterator_base>(it), count);
 }
 
 uint8_t BitStream::get(iterator it) const{
@@ -959,14 +1158,6 @@ void BitStream::assign(const T& bits, size_t count, size_t offset){
 		set<T>(bits, count, offset, begin());
 	else
 		set<T>(bits, count, offset, rbegin());
-
-	// iterator_base it = static_cast<iterator_base>(begin());
-	// if(!forward) it = static_cast<iterator_base>(rbegin());
-
-	// for(size_t i=0; i<count; ++i, ++it){
-	// 	it.set(BIT_AT(7-i%8, ptr[ei]));
-	// 	if(!((i + 1) % 8))	++ei;
-	// }
 }
 
 template<typename T>
@@ -1021,6 +1212,8 @@ void BitStream::rpush(const uint8_t* const src, size_t count, size_t offset){
 void BitStream::insert(const uint8_t* const src, size_t count, size_t offset, iterator_base it){
 	assert(src);
 	// TODO
+	// shift(it, it+offset);
+	// set(src, count, offset, it);
 }
 
 template<typename T>
@@ -1059,24 +1252,108 @@ void BitStream::rinsert(bool bit, size_t offset){
 	insert(bit, rbegin()+offset);
 }
 
-void BitStream::shift(size_t n, iterator_base it, const uint8_t* const src, size_t count, size_t offset){
-	// TODO
+void BitStream::pop(iterator_base it1, iterator_base it2){
+	// TODO: needs testing
+	size_t count = it2 - it1;
+	if(count > m_bit_count)
+		count = m_bit_count;
+
+	shift(count, it1, it2);
+	m_bit_count -= count;
 }
 
-void BitStream::shift(size_t n, iterator it, const uint8_t* const src, size_t count, size_t offset){
-	shift(n, static_cast<iterator_base>(it), src, count, offset);
+void BitStream::pop(iterator it, size_t offset){
+	auto it2 = offset == -1 ? end() : it + offset;
+	pop(static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
 }
 
-void BitStream::shift(size_t n, reverse_iterator it, const uint8_t* const src, size_t count, size_t offset){
-	shift(n, static_cast<iterator_base>(it), src, count, offset);
+void BitStream::pop(reverse_iterator it, size_t offset){
+	auto it2 = offset == -1 ? rend() : it + offset;
+	pop(static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
 }
 
-void BitStream::shiftr(size_t n, uint8_t byte){
-	shift(n, begin(), &byte, 8, 0);
+void BitStream::pop(iterator it1, iterator it2){
+	pop(static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
 }
 
-void BitStream::shiftl(size_t n, uint8_t byte){
-	shift(n, rbegin(), &byte, 8, 0);
+void BitStream::pop(reverse_iterator it1, reverse_iterator it2){
+	pop(static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
+}
+
+void BitStream::shift(size_t n, iterator_base it1, iterator_base it2){
+	rotate(n, it1, it2);
+	for(; it1!=it2; ++it1)
+		it1.set(0);
+}
+
+void BitStream::shift(size_t n, iterator it1, iterator it2){
+	shift(n, static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
+}
+
+void BitStream::shift(size_t n, reverse_iterator it1, reverse_iterator it2){
+	shift(n, static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
+}
+
+void BitStream::shift(size_t n, iterator it, size_t offset){
+	auto it2 = offset == -1 ? end() : it + offset;
+	shift(n, static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
+}
+
+void BitStream::shift(size_t n, reverse_iterator it, size_t offset){
+	auto it2 = offset == -1 ? rend() : it + offset;
+	shift(n, static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
+}
+
+void BitStream::shiftr(size_t n){
+	shift(n, static_cast<iterator_base>(rbegin()), static_cast<iterator_base>(rend()));
+}
+
+void BitStream::shiftl(size_t n){
+	shift(n, static_cast<iterator_base>(begin()), static_cast<iterator_base>(end()));
+}
+
+void BitStream::rotate(size_t n, iterator_base it1, iterator_base it2){
+	// TODO: need testing
+	size_t count = it2 - it1;
+	size_t en = n % count;	// effective n
+
+	size_t n_bytes[2] = { en / 8 + en % 8, (count - en) / 8 + (count - en) % 8 };
+	uint8_t* chunks[2];
+	
+	chunks[0] = reinterpret_cast<uint8_t*>(alloca(n_bytes[0]));
+	chunks[1] = reinterpret_cast<uint8_t*>(alloca(n_bytes[1]));
+
+	get<uint8_t>(chunks[0], n_bytes[0], it2-en, en);
+	get<uint8_t>(chunks[1], n_bytes[1], it1, count-en);
+
+	set(chunks[1], count-en, 0, it1, count-en);
+	set(chunks[0], en, 0, it2-en, en);
+}
+
+void BitStream::rotate(size_t n, iterator it1, iterator it2){
+	rotate(n, static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
+}
+
+void BitStream::rotate(size_t n, reverse_iterator it1, reverse_iterator it2){
+	rotate(n, static_cast<iterator_base>(it1), static_cast<iterator_base>(it2));
+}
+
+void BitStream::rotate(size_t n, iterator it, size_t offset){
+	auto it2 = offset == -1 ? end() : it + offset;
+	rotate(n, static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
+}
+
+void BitStream::rotate(size_t n, reverse_iterator it, size_t offset){
+	auto it2 = offset == -1 ? rend() : it + offset;
+	rotate(n, static_cast<iterator_base>(it), static_cast<iterator_base>(it2));
+}
+
+void BitStream::rotater(size_t n){
+	rotate(n, static_cast<iterator_base>(rbegin()), static_cast<iterator_base>(rend()));
+}
+
+void BitStream::rotatel(size_t n){
+	rotate(n, static_cast<iterator_base>(begin()), static_cast<iterator_base>(end()));
 }
 
 /* > Operators < */
@@ -1134,13 +1411,15 @@ BitStream BitStream::operator^(const BitStream& bs) const{
 
 BitStream BitStream::operator<<(size_t n) const{
 	BitStream out = *this;
-	out.shiftl(n, 0);
+	// TODO
+	// out.shiftl(n, 0);
 	return out;
 }
 
 BitStream BitStream::operator>>(size_t n) const{
 	BitStream out = *this;
-	out.shiftr(n, 0);
+	// TODO
+	// out.shiftr(n, 0);
 	return out;
 }
 
@@ -1163,12 +1442,14 @@ BitStream& BitStream::operator^=(const BitStream& bs){
 }
 
 BitStream& BitStream::operator<<=(size_t n){
-	shiftl(0, n);
+	// TODO
+	// shiftl(0, n);
 	return *this;
 }
 
 BitStream& BitStream::operator>>=(size_t n){
-	shiftr(0, n);
+	// TODO
+	// shiftr(0, n);
 	return *this;
 }
 

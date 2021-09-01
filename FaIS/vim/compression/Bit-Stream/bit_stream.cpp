@@ -8,20 +8,25 @@ struct BitChunk{
 };
 
 struct A{};
-
 struct B: A{};
-struct C: A{};
+struct C: B{};
+
+void test(A obj){
+	printf("worked!\n");
+}
 
 int main(){
 	printf("BitStream v0.1 testing...\n\n");
 
+
 	BitStream bs;
 	printf("sizeof BitChunk: %zu\n", sizeof(BitChunk));
-	bs.push<BitChunk>({ 'A', 'B', 'C', 'D' }, 8*sizeof(BitChunk), 0, bs.end());
+	auto itend = bs.end();
+	bs.push<BitChunk>({ 'A', 'B', 'C', 'D' }, 8*sizeof(BitChunk), 0, itend);
 	printf("pushing E...\n");
 	bs.push<char>('E', 8, 0, bs.end());
 	printf("pushing 0x1...\n");
-	bs.push<char>(0x01, 8, 0, bs.rbegin());
+	bs.push<char>(0x01, 8, 0, bs.rend());
 
 	int i=0;
 	char c;
