@@ -7,6 +7,11 @@ struct BitChunk{
 	char chunks[4];
 };
 
+struct A{};
+
+struct B: A{};
+struct C: A{};
+
 int main(){
 	printf("BitStream v0.1 testing...\n\n");
 
@@ -18,7 +23,6 @@ int main(){
 	printf("pushing 0x1...\n");
 	bs.push<char>(0x01, 8, 0, bs.rbegin());
 
-	
 	int i=0;
 	char c;
 	printf("reading 1\n");
@@ -36,8 +40,12 @@ int main(){
 	printf("%d, %d, %d, %d, %d\n", 
 			bs.begin() == bs.cbegin(), bs.begin() == bs.rend(), bs.begin() == bs.crend()-1, 
 			bs.cbegin() == bs.begin(), bs.crbegin()+1 == bs.cend()-2);
-	std::vector<int> iv;
-	const std::vector<int>::const_iterator it = iv.cbegin();
+	// printf("%d, %d, %d, %d, %d\n",
+	// 		bs.cbegin() < bs.end(), bs.rend() < bs.cend(), bs.crbegin() > bs.end(), 2, 2);
+
+	// std::vector<int> iv;
+	// const std::vector<int>::const_iterator it = iv.cbegin();
 	// iv.begin() == iv.crbegin();
+
 	return 0;
 }
