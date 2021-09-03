@@ -1,7 +1,7 @@
 #include "bit_stream.h"
 
 #include <cstdio>
-
+#include <iostream>
 
 struct BitChunk{
 	char chunks[4];
@@ -21,36 +21,32 @@ int main(){
 
 	BitStream bs;
 	printf("sizeof BitChunk: %zu\n", sizeof(BitChunk));
-	auto itend = bs.end();
-	bs.push<BitChunk>({ 'A', 'B', 'C', 'D' }, 8*sizeof(BitChunk), 0, itend);
+	bs.push<BitChunk>({ 'A', 'B', 'C', 'D' }, bs.end());
 	printf("pushing E...\n");
-	bs.push<char>('E', 8, 0, bs.end());
-	printf("pushing 0x1...\n");
-	bs.push<char>(0x01, 8, 0, bs.rend());
+	bs.push<char>('E', bs.end());
+	int tmp = 0x04030201;
+	uint8_t* ptr = reinterpret_cast<uint8_t*>(&tmp);
+	printf("bytes: %.2x %.2x %.2x %.2x\n", ptr[0], ptr[1], ptr[2], ptr[3]);
+	printf("pushing %.8x...\n", tmp);
+	bs.push<int>(tmp, bs.end());
+	// bs.set<int>(tmp, bs.begin());
 
-	int i=0;
-	char c;
 	printf("reading 1\n");
-	for(auto it=bs.cbegin(); it!=bs.cend(); ++it){
-		printf("%d ", *it); ++i;
-		if(i % 8 == 0) printf("| ");
-	}	printf("\n%d\n", i);
-	
+	bs.print(std::cout, true);
+
+	printf("bit count: %zu\n", bs.size());
+
+	// bs.rotate(3*bs.size()+8, bs.rbegin(), bs.rend());
+	// bs.rotate(1, bs.rbegin()+1, bs.rbegin()+28);
+	// bs.shift(1, bs.rbegin()+1, bs.rend()-1);
+	// bs.rotate(1, bs.rbegin()+1, bs.rend()-1);
+	// bs.memmov(3, bs.rbegin()+13, bs.crend()-8);
+	bs.insert<char>('z', bs.begin()+16);
+	// bs.memcpy(8, bs.begin()+16, bs.crend()-24);
+	bs.memflp(8, bs.begin()+16);
+	bs.memflp(8, bs.rbegin()+16);
 	printf("reading 2\n");
-	for(auto it=bs.cbegin(); it<bs.cend(); it+=8){
-		c = bs.get<char>(it, 8);
-		printf("%d(%c) ", c, c);
-	}	printf("\n");
-
-	printf("%d, %d, %d, %d, %d\n", 
-			bs.begin() == bs.cbegin(), bs.begin() == bs.rend(), bs.begin() == bs.crend()-1, 
-			bs.cbegin() == bs.begin(), bs.crbegin()+1 == bs.cend()-2);
-	// printf("%d, %d, %d, %d, %d\n",
-	// 		bs.cbegin() < bs.end(), bs.rend() < bs.cend(), bs.crbegin() > bs.end(), 2, 2);
-
-	// std::vector<int> iv;
-	// const std::vector<int>::const_iterator it = iv.cbegin();
-	// iv.begin() == iv.crbegin();
+	bs.print();
 
 	return 0;
 }

@@ -10,8 +10,7 @@
 #include <cstdint>
 #include <stddef.h>
 #include <cassert>
-#include <istream>
-#include <ostream>
+#include <iostream>
 #include <cstdio>
 
 
@@ -53,6 +52,10 @@ class BitStream{
 	size_t m_bit_count;
 	std::vector<uint8_t> m_bytes;
 
+	public:
+	class bit_proxy;
+
+	private:
 	struct iterator_base{
 		friend class BitStream;
 
@@ -70,14 +73,14 @@ class BitStream{
 		mutable uint8_t state;
 
 		protected:
-		inline size_t get_ei() const{	// effective index of m_bytes (0 1 2 3 ...)
+		inline constexpr size_t get_ei() const{	// effective index of m_bytes (0 1 2 3 ...)
 			const auto& bytes = m_cbs->m_bytes;
 			return !is_reverse() ? bytes.size() - 1 - offset/8 : offset/8;
 		}
-		inline size_t get_mei() const{	// mask effective index (7 6 5 4 3 2 1 0)
+		inline constexpr size_t get_mei() const{	// mask effective index (7 6 5 4 3 2 1 0)
 			return is_reverse() ? 7 - (offset % 8) : offset % 8;
 		}
-		inline size_t get_index() const{	// true bit index
+		inline constexpr size_t get_index() const{	// true bit index
 			return is_reverse() ? offset : m_cbs->m_bit_count - offset;
 		}
 
@@ -86,15 +89,15 @@ class BitStream{
 			m_cbs(nullptr), m_bs(nullptr), offset(0), state(INVALID_STATE) {}
 		virtual ~iterator_base() = default;
 
-		inline bool is_valid() const{ return !(state >> 7); }
-		inline bool is_accessible() const{ return m_cbs && (offset < m_cbs->m_bit_count); }
-		inline bool is_const() const{ return state & CONST_MASK; }
-		inline bool is_reverse() const{ return state & REVERSE_MASK; }
-		inline bool is_const_reverse() const{ return (state & (CONST_MASK | REVERSE_MASK)); }
+		inline constexpr bool is_valid() const{ return !(state >> 7); }
+		inline constexpr bool is_accessible() const{ return m_cbs && (offset < m_cbs->m_bit_count); }
+		inline constexpr bool is_const() const{ return state & CONST_MASK; }
+		inline constexpr bool is_reverse() const{ return state & REVERSE_MASK; }
+		inline constexpr bool is_const_reverse() const{ return (state & (CONST_MASK | REVERSE_MASK)); }
 
 		/* Setters & Getters */
 		void set(bool bit);
-		bool get() const;
+		const bool get() const;
 
 		/* Operators */
 		virtual bool operator==(const iterator_base& iterator) const;
@@ -103,8 +106,6 @@ class BitStream{
 		virtual bool operator>(const iterator_base& iterator) const;
 		virtual bool operator<=(const iterator_base& iterator) const;
 		virtual bool operator>=(const iterator_base& iterator) const;
-
-		virtual bool operator*() const;
 
 		iterator_base operator+(size_t offset) const;
 		iterator_base operator-(size_t offset) const;
@@ -115,13 +116,15 @@ class BitStream{
 		iterator_base& operator++();
 		iterator_base& operator--();
 
-		iterator_base& operator++(int);
-		iterator_base& operator--(int);
+		iterator_base operator++(int);
+		iterator_base operator--(int);
 
 		iterator_base& operator=(const iterator_base& it);
 		iterator_base& operator=(bool bit);
 
 		size_t operator-(const iterator_base& it) const;
+
+		inline bit_proxy operator*();
 
 		protected:
 		// TODO: optimize
@@ -148,16 +151,12 @@ class BitStream{
 			m_cbs(cbs), m_bs(nullptr), offset(offset_), state(state_)
 		{
 			validate();
-			// printf("const iterator created: c %d, r %d, v %d, a %d\n",
-					// is_const(), is_reverse(), is_valid(), is_accessible());
 		}
 
 		iterator_base(BitStream* bs, size_t offset_, uint8_t state_):
 			m_cbs(bs), m_bs(bs), offset(offset_), state(state_)
 		{
 			validate();
-			// printf("non-const iterator created: c %d, r %d, v %d, a %d\n",
-					// is_const(), is_reverse(), is_valid(), is_accessible());
 		}
 
 		void allocate_more(size_t n){
@@ -166,7 +165,8 @@ class BitStream{
 			auto it = is_reverse() ? m_bs->m_bytes.end() : m_bs->m_bytes.begin();
 			m_bs->m_bytes.insert(it, n, 0);
 		}
-	}m_read_iterator, m_write_iterator;
+	};
+	mutable iterator_base m_read_iterator, m_write_iterator;
 
 	struct const_iterator_base: public iterator_base{
 		const_iterator_base(): iterator_base() {}
@@ -202,13 +202,15 @@ class BitStream{
 		iterator& operator++();
 		iterator& operator--();
 
-		iterator& operator++(int);
-		iterator& operator--(int);
+		iterator operator++(int);
+		iterator operator--(int);
 
 		iterator& operator=(const iterator& it);
 		iterator& operator=(bool bit);
 
 		size_t operator-(const iterator_base& it) const;
+
+		inline bit_proxy operator*() const;
 
 		protected:
 		iterator(BitStream* bs_, size_t offset_, uint8_t state_):
@@ -230,13 +232,15 @@ class BitStream{
 		const_iterator& operator++();
 		const_iterator& operator--();
 
-		const_iterator& operator++(int);
-		const_iterator& operator--(int);
+		const_iterator operator++(int);
+		const_iterator operator--(int);
 
 		const_iterator& operator=(const iterator_base& it);
 		const_iterator& operator=(bool bit);
 
 		size_t operator-(const iterator_base& it) const;
+
+		inline const bit_proxy operator*() const;
 
 		protected:
 		const_iterator(const BitStream* bs_, size_t offset_, uint8_t state_):
@@ -258,13 +262,15 @@ class BitStream{
 		reverse_iterator& operator++();
 		reverse_iterator& operator--();
 
-		reverse_iterator& operator++(int);
-		reverse_iterator& operator--(int);
+		reverse_iterator operator++(int);
+		reverse_iterator operator--(int);
 
 		reverse_iterator& operator=(const iterator_base& it);
 		reverse_iterator& operator=(bool bit);
 
 		size_t operator-(const iterator_base& it) const;
+
+		inline bit_proxy operator*() const;
 
 		protected:
 		reverse_iterator(BitStream* bs_, size_t offset_, uint8_t state_):
@@ -286,36 +292,76 @@ class BitStream{
 		const_reverse_iterator& operator++();
 		const_reverse_iterator& operator--();
 
-		const_reverse_iterator& operator++(int);
-		const_reverse_iterator& operator--(int);
+		const_reverse_iterator operator++(int);
+		const_reverse_iterator operator--(int);
 
 		const_reverse_iterator& operator=(const iterator_base& it);
 		const_reverse_iterator& operator=(bool bit);
 
 		size_t operator-(const iterator_base& it) const;
 
+		inline const bit_proxy operator*() const;
+
 		protected:
 		const_reverse_iterator(const BitStream* bs_, size_t offset_, size_t state_):
 			const_iterator_base(bs_, offset_, state_) {}
 	};
 
+	class bit_proxy{
+		friend class BitStream;
+
+		iterator_base m_it;
+
+		protected:
+		bit_proxy(const iterator_base& it): m_it(it) {}
+
+		public:
+		~bit_proxy() = default;
+
+		inline operator bool() const{ return m_it.get(); }
+		inline bit_proxy& operator=(bool bit){
+			m_it.set(bit);
+			return *this;
+		}
+		
+		friend std::ostream& operator<<(std::ostream& out, const bit_proxy& bp){
+			return out << bp.m_it.get();
+		}
+		friend std::istream& operator>>(std::istream& in, bit_proxy& bp){
+			bool bit;
+			in >> bit;
+			bp.m_it.set(bit);
+			return in;
+		}
+	};
+
 	public:
 	BitStream(size_t bit_count=0, bool bit=0):
-		m_bit_count(0)
+		m_bit_count(0), m_read_iterator(cbegin()), m_write_iterator(begin())
 	{
 		reset(bit_count, bit);
 	}
 
-	BitStream(const uint8_t* const src, size_t count, size_t offset=0):
-		m_bit_count(count)
+	BitStream(const uint8_t* const src, size_t count, size_t offset=0, bool forward=true):
+		m_bit_count(0)
 	{
-		push(src, count, offset);
+		if(forward)
+			push(src, count, offset, end());
+		else
+			push(src, count, offset, rend());
 	}
 
 	BitStream(uint8_t byte):
-		m_bit_count(8)
+		m_bit_count(0)
 	{
 		m_bytes.push_back(byte);
+	}
+
+	BitStream(const std::string& bit_chars):
+		m_bit_count(bit_chars.size())
+	{
+		reset(m_bit_count, 0);
+		// TODO: set
 	}
 
 	/* Iterators */
@@ -330,73 +376,107 @@ class BitStream{
 
 	/* Setters & Getters */
 	template<typename T>
-	void set(const T& bits, size_t count, size_t offset, iterator it);
+	BitStream& set(const T& bits, iterator it, size_t count=8*sizeof(T), size_t offset=0);
 	template<typename T>
-	void set(const T& bits, size_t count, size_t offset, reverse_iterator it);
-	void set(const uint8_t* const src, size_t count, size_t offset, iterator it);
-	void set(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it);
-	void set(bool bit, iterator it);
-	void set(bool bit, reverse_iterator it);
-	void set(bool bit, size_t offset=0);
-	void rset(bool bit, size_t offset=0);
+	BitStream& set(const T& bits, reverse_iterator it, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T>
+	BitStream& set(const T* const src, iterator it, size_t count, size_t offset=0);
+	template<typename T>
+	BitStream& set(const T* const src, reverse_iterator it, size_t count, size_t offset=0);
+	BitStream& set(bool bit, iterator it);
+	BitStream& set(bool bit, reverse_iterator it);
 
-	template<typename T>
-	T get(const iterator it, size_t count=1) const;
-	template<typename T>
-	T get(const const_iterator it, size_t count=1) const;
-	template<typename T>
-	T get(const reverse_iterator it, size_t count=1) const;
-	template<typename T>
-	T get(const const_reverse_iterator it, size_t count=1) const;
-	template<typename T>
-	void get(T* const dest, size_t size, const iterator it, size_t count=1) const;
-	template<typename T>
-	void get(T* const dest, size_t size, const const_iterator it, size_t count=1) const;
-	template<typename T>
-	void get(T* const dest, size_t size, const reverse_iterator it, size_t count=1) const;
-	template<typename T>
-	void get(T* const dest, size_t size, const const_reverse_iterator it, size_t count=1) const;
-	uint8_t get(const iterator it) const;
-	uint8_t get(const reverse_iterator it) const;
-	uint8_t get(const const_iterator it) const;
-	uint8_t get(const const_reverse_iterator it) const;
-	uint8_t get(size_t offset=0) const;
-	uint8_t rget(size_t offset=0) const;
+	template<typename T=uint8_t>
+	T get(iterator it, size_t count=8*sizeof(T), size_t offset=0) const;
+	template<typename T=uint8_t>
+	T get(const_iterator it, size_t count=8*sizeof(T), size_t offset=0) const;
+	template<typename T=uint8_t>
+	T get(reverse_iterator it, size_t count=8*sizeof(T), size_t offset=0) const;
+	template<typename T=uint8_t>
+	T get(const_reverse_iterator it, size_t count=8*sizeof(T), size_t offset=0) const;
+	template<typename T=uint8_t>
+	void get(T* const dest, iterator it, size_t count, size_t offset=0) const;
+	template<typename T=uint8_t>
+	void get(T* const dest, const_iterator it, size_t count, size_t offset=0) const;
+	template<typename T=uint8_t>
+	void get(T* const dest, reverse_iterator it, size_t count, size_t offset=0) const;
+	template<typename T=uint8_t>
+	void get(T* const dest, const_reverse_iterator it, size_t count, size_t offset=0) const;
+	bool get(const iterator it) const;
+	bool get(const reverse_iterator it) const;
+	bool get(const const_iterator it) const;
+	bool get(const const_reverse_iterator it) const;
 
 	/* Modifiers */
 	inline size_t size() const{ return m_bit_count; }
-	inline size_t max_size() const{ return m_bytes.size(); }
-	inline size_t capacity() const{ return m_bytes.capacity(); }
-	// TODO: at/rat need to be comleted properly!
-	bool at(size_t offset) const{ return 0; }
-	bool rat(size_t offset) const{ return 0; }
+	inline size_t buffer_size() const{ return 8*m_bytes.size(); }
+	inline size_t max_size() const{ return 8*m_bytes.max_size(); }
+	inline size_t capacity() const{ return 8*m_bytes.capacity(); }
+
+	inline void seek(iterator it) const{
+		m_write_iterator.offset = it.offset;
+		m_write_iterator.state = it.state;
+	}
+	inline void seek(reverse_iterator it) const{
+		m_write_iterator.offset = it.offset;
+		m_write_iterator.state = it.state;
+	}
+	inline void seek(const_iterator it) const{
+		m_read_iterator.offset = it.offset;
+		m_read_iterator.state = it.state;
+	}
+	inline void seek(const_reverse_iterator it) const{
+		m_read_iterator.offset = it.offset;
+		m_read_iterator.state = it.state;
+	}
+
+	/*
+	 * Access functions that check boundary safety
+	 */
+	bit_proxy at(size_t offset);
+	bit_proxy rat(size_t offset);
+	const bit_proxy at(size_t offset) const;
+	const bit_proxy rat(size_t offset) const;
+
+	/*
+	 * Resize	- resizes the stream
+	 * Reset	- initializes the stream from scratch
+	 */
 	void resize(size_t bit_count);
 	void reset(size_t bit_count, bool bit=0);
+	void shrink_to_fit();
 
+	/* Args:
+	 *
+	 * count	- how many bits to assign
+	 * offset	- from which bit to start assigning
+	 */
 	template<typename T, bool forward=true>
 	void assign(const T& bits, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T, bool forward=true>
+	void assign(const T* const src, size_t count, size_t offset=0);
 	template<typename T>
 	void rassign(const T& bits, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T>
+	void rassign(const T* const src, size_t count, size_t offset=0);
 
 	template<typename T>
-	void push(const T& bits, size_t count, size_t offset, iterator it);
+	void push(const T& bits, iterator it, size_t count=8*sizeof(T), size_t offset=0);
 	template<typename T>
-	void push(const T& bits, size_t count, size_t offset, reverse_iterator it);
-	void push(const uint8_t* const src, size_t count, size_t offset, iterator it);
-	void push(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it);
-	void push(const uint8_t* const src, size_t count, size_t offset=0);
-	void rpush(const uint8_t* const src, size_t count, size_t offset=0);
+	void push(const T& bits, reverse_iterator it, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T>
+	void push(const T* const src, iterator it, size_t count, size_t offset=0);
+	template<typename T>
+	void push(const T* const src, reverse_iterator it, size_t count, size_t offset=0);
 
 	template<typename T>
-	void insert(const T& bits, size_t count, size_t offset, iterator it);
+	void insert(const T& bits, iterator it, size_t count=8*sizeof(T), size_t offset=0);
 	template<typename T>
-	void insert(const T& bits, size_t count, size_t offset, reverse_iterator it);
-	void insert(const uint8_t* const src, size_t count, size_t offset, iterator it);
-	void insert(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it);
+	void insert(const T& bits, reverse_iterator it, size_t count=8*sizeof(T), size_t offset=0);
+	void insert(const uint8_t* const src, iterator it, size_t count, size_t offset=0);
+	void insert(const uint8_t* const src, reverse_iterator it, size_t count, size_t offset=0);
 	void insert(bool bit, iterator it);
 	void insert(bool bit, reverse_iterator it);
-	void insert(bool bit, size_t offset);
-	void rinsert(bool bit, size_t offset);
 
 	void pop(iterator it, size_t offset=-1);
 	void pop(reverse_iterator it, size_t offset=-1);
@@ -417,10 +497,73 @@ class BitStream{
 	void rotater(size_t n=1);
 	void rotatel(size_t n=1);
 
+	void memcpy(size_t n, iterator it_dest, const_iterator it_src);
+	void memcpy(size_t n, reverse_iterator it_dest, const_iterator it_src);
+	void memcpy(size_t n, iterator it_dest, const_reverse_iterator it_src);
+	void memcpy(size_t n, reverse_iterator it_dest, const_reverse_iterator it_src);
+	void memmov(size_t n, iterator it_dest, const_iterator it_src);
+	void memmov(size_t n, reverse_iterator it_dest, const_iterator it_src);
+	void memmov(size_t n, iterator it_dest, const_reverse_iterator it_src);
+	void memmov(size_t n, reverse_iterator it_dest, const_reverse_iterator it_src);
+	void memflp(size_t n, iterator it);
+	void memflp(size_t n, reverse_iterator it);
+
+	BitStream substream(iterator it1, iterator it2) const;
+	BitStream substream(const_iterator it1, const_iterator it2) const;
+	BitStream substream(reverse_iterator it1, reverse_iterator it2) const;
+	BitStream substream(const_reverse_iterator it1, const_reverse_iterator it2) const;
+	BitStream substream(iterator it, size_t offset) const;
+	BitStream substream(const_iterator it, size_t offset) const;
+	BitStream substream(reverse_iterator it, size_t offset) const;
+	BitStream substream(const_reverse_iterator it, size_t offset) const;
+
+	std::ostream& print(std::ostream& out=std::cout, bool forward=true) const{
+		int i=0;
+
+		iterator_base cbegin = forward ? 
+			static_cast<iterator_base>(this->cbegin()) : static_cast<iterator_base>(this->crbegin());
+		iterator_base cend = forward ? 
+			static_cast<iterator_base>(this->cend()) : static_cast<iterator_base>(this->crend());
+
+		for(auto it=cbegin; it!=cend; ++it){
+			printf("%d ", it.get()); ++i;
+			if(!(i%8)) printf("| ");
+			else if(!(i%4)) printf("' ");
+		}	printf("\n");
+
+		uint8_t c, c_;
+		for(auto it=cbegin; it!=cend; it+=8){
+			get(&c, 8, 0, it);
+			c_ = c;
+			if(c < 33 || c > 126) c_ = 0;
+			printf("%d(%c) ", c, c_);
+		}	printf("\n");
+
+		return out;
+	}
+
+	std::string to_string() const;
+	template<typename T>
+	T cast_to(size_t count=8*sizeof(T)) const;
+	template<typename T>
+	BitStream& cast_from(const T& bits, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T>
+	BitStream& cast_from(const T* const src, size_t size, size_t count=-1, size_t offset=0);
+	template<typename T, size_t size>
+	BitStream& cast_from(const T* const src, size_t count=-1, size_t offset=0);
+
+	template<typename T>
+	static BitStream cast(const T& bits, size_t count=8*sizeof(T), size_t offset=0);
+	template<typename T>
+	static BitStream cast(const T* const src, size_t size, size_t count=-1, size_t offset=0);
+	template<typename T, size_t size>
+	static BitStream cast(const T* const src);
+
 	/* Operators */
-	iterator operator[](size_t offset);
-	bool operator()(size_t offset) const;
-	BitStream& operator()(size_t offset, bool bit, bool reverse=false);
+	bit_proxy operator[](size_t offset);
+	const bit_proxy operator[](size_t offset) const;
+	bit_proxy operator()(size_t offset);
+	const bit_proxy operator()(size_t offset) const;
 
 	BitStream operator!() const;
 	BitStream operator~() const;
@@ -457,17 +600,33 @@ class BitStream{
 	private:
 	/* Args:
 	 *
-	 * src		- where bits are fetched from
-	 * count	- how many bits to fetch
-	 * offset	- from which bit to start fetching (inclusive)
+	 * src		- where bits are read from
+	 * dest		- where bits are written to
+	 * count	- how many bits to read/write
+	 * offset	- from which bit to start reading/writing (inclusive)
 	 * it		- bit stream iterator
-	 * size		- size of the source `src`
+	 *
+	 * These functions preserve the safety over null pointers, however,
+	 * provided pointers have be allocated with proper size that is greater
+	 * or equal to `count+offset` beforehand manually.
+	 * If `count` exceeds the size of empty space left in the stream (space
+	 * between `it` and (r)end of the stream) then the execution stops.
+	 * Therefore, Setters & Getters are guaranteed to preserve the stream size.
 	 */
-	void set(const uint8_t* const src, size_t count, size_t offset, iterator_base it, size_t size);
-	template<typename T>
-	T get(iterator_base it, size_t count) const;
-	template<typename T>
-	void get(T* const dest, size_t size, iterator_base it, size_t count) const;
+	void set(const uint8_t* const src, size_t count, size_t offset, iterator_base it);
+	void get(uint8_t* const dest, size_t count, size_t offset, iterator_base it) const;
+
+	/* Args:
+	 *
+	 * src		- where bits are read from
+	 * count	- how many bits to read
+	 * offset	- from which bit to start reading
+	 * forward	- bit flow direction
+	 *
+	 * Assigns the bit stream to the given stream of bits.
+	 * This function reintializes the bit stream from scratch.
+	 */
+	void assign(const uint8_t* const src, size_t count, size_t offset, bool forward);
 
 	/* Args:
 	 *
@@ -480,7 +639,10 @@ class BitStream{
 	 * if needed. The only time pushing bits does not overwrite
 	 * any other bit is when the given iterator is pointing to either
 	 * end or reversed end of the stream (aka end() and rend()).
-	 * Therefore, pushing bits may overwrite bits if necessary.
+	 * In case, `count` is exceeds the empty space (space between `it` 
+	 * and (r)end()) then necessary amount of extra space is allocated.
+	 * Therefore, pushing bits may overwrite bits and/or increase the
+	 * bit stream size if necessary.
 	 */
 	void push(const uint8_t* const src, size_t count, size_t offset, iterator_base it);
 
@@ -526,6 +688,7 @@ class BitStream{
 	 * Since two iterators have to have the same reverseness property,
 	 * the substream is shifted in the direction of [it1 -> it2].
 	 * Some bits are shifted out, and therefore, some bits are lost after shifting.
+	 * Therfore, shifting preserves the stream size and need not keep unnessary bits.
 	 */
 	void shift(size_t n, iterator_base it1, iterator_base it2);
 
@@ -537,10 +700,29 @@ class BitStream{
 	 *
 	 * Rotates the substream located in between the two iterators [it1, it2).
 	 * The direction of rotation depends on the reverseness of given iterators.
-	 * As shifting the direction is that of [it1 -> it2].
-	 * However, rotation preserves all the bits.
+	 * As shifting the direction is that of [it1 -> it2]. Rotation is also
+	 * circular shifting which means poped out bits return to the stream
+	 * from the opposite end.
+	 * Therefore, rotation preserves all the bits and the original stream size.
 	 */
 	void rotate(size_t n, iterator_base it1, iterator_base it2);
+
+	/* Args:
+	 *
+	 * n			- how many bits to copy
+	 * it_dest		- where to begin copying to; destination
+	 * it_src		- where to begin copying from; source
+	 *
+	 * Copies/Moves the `n` bits from source to destination in the bit stream.
+	 * `memcpy` is more aggressive than `memmov` function and there is a 
+	 * trade-off between the two. `memcpy` does not try to detect memory
+	 * overlaps and it makes it vulnarable to such cases, and `memmov` spends 
+	 * more time on detecting overlaps and handles them for memory safety.
+	 * Therefore, copying is faster but unsafe for memory 
+	 * management whereas moving is slower but safe.
+	 */
+	void memcpy(size_t n, iterator_base it_dest, iterator_base it_src);
+	void memmov(size_t n, iterator_base it_dest, iterator_base it_src);
 };
 
 
@@ -549,6 +731,11 @@ class BitStream{
 void BitStream::iterator_base::set(bool bit){
 	assert(is_accessible());
 
+	if(!m_bs){
+		printf("ERROR[iterator_base::set(bool)]: null bit stream!\n");
+		exit(1);
+	}
+
 	auto& bytes = m_bs->m_bytes;
 	size_t ei = get_ei();
 	size_t mei = get_mei();
@@ -556,8 +743,13 @@ void BitStream::iterator_base::set(bool bit){
 	bytes[ei] |= (BIT_MASK(bit, mei));
 }
 
-bool BitStream::iterator_base::get() const{
+const bool BitStream::iterator_base::get() const{
 	assert(is_accessible());
+
+	if(!m_cbs){
+		printf("ERROR[iterator_base::get()]: null bit stream!\n");
+		exit(1);
+	}
 
 	auto& bytes = m_cbs->m_bytes;
 	size_t ei = get_ei();
@@ -566,16 +758,18 @@ bool BitStream::iterator_base::get() const{
 }
 
 BitStream::iterator_base BitStream::iterator_base::operator+(size_t offset) const{
+	BitStream* tmp = m_bs ? m_bs : const_cast<BitStream*>(m_cbs);
 	return BitStream::iterator_base(
-			this->m_cbs,
+			tmp,
 			this->offset+offset,
 			this->state
 		);
 }
 
 BitStream::iterator_base BitStream::iterator_base::operator-(size_t offset) const{
+	BitStream* tmp = m_bs ? m_bs : const_cast<BitStream*>(m_cbs);
 	return BitStream::iterator_base(
-			this->m_cbs,
+			tmp,
 			this->offset-offset,
 			this->state
 		);
@@ -607,17 +801,20 @@ BitStream::iterator_base& BitStream::iterator_base::operator--(){
 	return *this -= 1;
 }
 
-BitStream::iterator_base& BitStream::iterator_base::operator++(int){
-	// TODO
-	assert(false);
+BitStream::iterator_base BitStream::iterator_base::operator++(int){
+	iterator_base out = *this;
+	++*this;
+	return out;
 }
 
-BitStream::iterator_base& BitStream::iterator_base::operator--(int){
-	// TODO
-	assert(false);
+BitStream::iterator_base BitStream::iterator_base::operator--(int){
+	iterator_base out = *this;
+	--*this;
+	return out;
 }
 
 bool BitStream::iterator_base::operator==(const iterator_base& iterator) const{
+	assert(is_reverse() == iterator.is_reverse());
 	return get_ei() == iterator.get_ei() && get_mei() == iterator.get_mei();
 }
 
@@ -643,15 +840,13 @@ bool BitStream::iterator_base::operator>=(const iterator_base& iterator) const{
 	return *this == iterator || *this > iterator;
 }
 
-bool BitStream::iterator_base::operator*() const{
-	return get();
+size_t BitStream::iterator_base::operator-(const iterator_base& it) const{
+	assert(is_reverse() == it.is_reverse());
+	return offset - it.offset;
 }
 
-size_t BitStream::iterator_base::operator-(const iterator_base& it) const{
-	size_t out = -1;
-	if(*this >= it)
-		out = offset - it.offset;
-	return out;
+BitStream::bit_proxy BitStream::iterator_base::operator*(){
+	return bit_proxy(*this);
 }
 
 /* BitStream::iterator_base::iterator implementation */
@@ -698,14 +893,16 @@ BitStream::iterator& BitStream::iterator::operator--(){
 	return *this -= 1;
 }
 
-BitStream::iterator& BitStream::iterator::operator++(int){
-	// TODO
-	assert(false);
+BitStream::iterator BitStream::iterator::operator++(int){
+	iterator out = *this;
+	++*this;
+	return out;
 }
 
-BitStream::iterator& BitStream::iterator::operator--(int){
-	// TODO
-	assert(false);
+BitStream::iterator BitStream::iterator::operator--(int){
+	iterator out = *this;
+	--*this;
+	return out;
 }
 
 BitStream::iterator& BitStream::iterator::operator=(const iterator& it){
@@ -722,10 +919,11 @@ BitStream::iterator& BitStream::iterator::operator=(bool bit){
 }
 
 size_t BitStream::iterator::operator-(const iterator_base& it) const{
-	size_t out = -1;
-	if(*this >= it)
-		out = offset - it.offset;
-	return out;
+	return offset - it.offset;
+}
+
+BitStream::bit_proxy BitStream::iterator::operator*() const{
+	return bit_proxy(*this);
 }
 
 /* BitStream::iterator_base::const_iterator implementation */
@@ -772,14 +970,16 @@ BitStream::const_iterator& BitStream::const_iterator::operator--(){
 	return *this -= 1;
 }
 
-BitStream::const_iterator& BitStream::const_iterator::operator++(int){
-	// TODO
-	assert(false);
+BitStream::const_iterator BitStream::const_iterator::operator++(int){
+	const_iterator out = *this;
+	++*this;
+	return out;
 }
 
-BitStream::const_iterator& BitStream::const_iterator::operator--(int){
-	// TODO
-	assert(false);
+BitStream::const_iterator BitStream::const_iterator::operator--(int){
+	const_iterator out = *this;
+	--*this;
+	return out;
 }
 
 BitStream::const_iterator& BitStream::const_iterator::operator=(const iterator_base& it){
@@ -796,10 +996,11 @@ BitStream::const_iterator& BitStream::const_iterator::operator=(bool bit){
 }
 
 size_t BitStream::const_iterator::operator-(const iterator_base& it) const{
-	size_t out = -1;
-	if(*this >= it)
-		out = offset - it.offset;
-	return out;
+	return offset - it.offset;
+}
+
+const BitStream::bit_proxy BitStream::const_iterator::operator*() const{
+	return bit_proxy(*this);
 }
 
 /* BitStream::iterator_base::reverse_iterator implementation */
@@ -846,14 +1047,16 @@ BitStream::reverse_iterator& BitStream::reverse_iterator::operator--(){
 	return *this -= 1;
 }
 
-BitStream::reverse_iterator& BitStream::reverse_iterator::operator++(int){
-	// TODO
-	assert(false);
+BitStream::reverse_iterator BitStream::reverse_iterator::operator++(int){
+	reverse_iterator out = *this;
+	++*this;
+	return out;
 }
 
-BitStream::reverse_iterator& BitStream::reverse_iterator::operator--(int){
-	// TODO
-	assert(false);
+BitStream::reverse_iterator BitStream::reverse_iterator::operator--(int){
+	reverse_iterator out = *this;
+	++*this;
+	return out;
 }
 
 
@@ -871,10 +1074,11 @@ BitStream::reverse_iterator& BitStream::reverse_iterator::operator=(bool bit){
 }
 
 size_t BitStream::reverse_iterator::operator-(const iterator_base& it) const{
-	size_t out = -1;
-	if(*this >= it)
-		out = offset - it.offset;
-	return out;
+	return offset - it.offset;
+}
+
+BitStream::bit_proxy BitStream::reverse_iterator::operator*() const{
+	return bit_proxy(*this);
 }
 
 /* BitStream::iterator_base::const_reverse_iterator implementation */
@@ -921,14 +1125,16 @@ BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator--
 	return *this -= 1;
 }
 
-BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator++(int){
-	// TODO
-	assert(false);
+BitStream::const_reverse_iterator BitStream::const_reverse_iterator::operator++(int){
+	const_reverse_iterator out = *this;
+	++*this;
+	return out;
 }
 
-BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator--(int){
-	// TODO
-	assert(false);
+BitStream::const_reverse_iterator BitStream::const_reverse_iterator::operator--(int){
+	const_reverse_iterator out = *this;
+	++*this;
+	return out;
 }
 
 
@@ -946,10 +1152,11 @@ BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator=(
 }
 
 size_t BitStream::const_reverse_iterator::operator-(const iterator_base& it) const{
-	size_t out = -1;
-	if(*this >= it)
-		out = offset - it.offset;
-	return out;
+	return offset - it.offset;
+}
+
+const BitStream::bit_proxy BitStream::const_reverse_iterator::operator*() const{
+	return bit_proxy(*this);
 }
 
 /* BitStream implementation */
@@ -990,148 +1197,153 @@ inline BitStream::const_reverse_iterator BitStream::crend() const{
 
 /* > Setters & Getters < */
 
-void BitStream::set(const uint8_t* const src, size_t count, size_t offset, iterator_base it, size_t size){
-	assert(count <= size);	// segmentation fault: cannot read pass T object!
+void BitStream::set(const uint8_t* const src, size_t count, size_t offset, iterator_base it){
+	if(!(it+(count-1)).is_accessible())
+		fprintf(stderr, "WARNING[BitStream::set(<base>)]: Unable to set %zu bit(s)\n", count);
 
-	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
+	for(size_t i=0, ei=0, mei=0; i<count && it.is_accessible(); ++i, ++it){
 		ei = (offset + i) / 8;
-		it.set(BIT_AT(7-i%8, src[ei]));
+		mei = it.is_reverse() ? (offset + i) % 8 : 7 - (offset + i) % 8;
+		it.set(src[ei] & MASK(mei));
 	}
 }
 
 template<typename T>
-void BitStream::set(const T& bits, size_t count, size_t offset, iterator it){
+BitStream& BitStream::set(const T& bits, iterator it, size_t count, size_t offset){
 	set(reinterpret_cast<const uint8_t* const>(&bits), 
-			count, offset, static_cast<iterator_base>(it), 8*sizeof(T));
+			count, offset, static_cast<iterator_base>(it));
+	return *this;
 }
 
 template<typename T>
-void BitStream::set(const T& bits, size_t count, size_t offset, reverse_iterator it){
-	set(reinterpret_cast<const uint8_t* const>(bits), 
-			count, offset, static_cast<iterator_base>(it), 8*sizeof(T));
-}
-
-void BitStream::set(const uint8_t* const src, size_t count, size_t offset, iterator it){
-	set(src, count, offset, static_cast<iterator_base>(it), -1);
-}
-
-void BitStream::set(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it){
-	set(src, count, offset, static_cast<iterator_base>(it), -1);
-}
-
-void BitStream::set(bool bit, iterator it){
-	set<uint8_t>(static_cast<uint8_t>(bit), 1, 0, it);
-}
-
-void BitStream::set(bool bit, reverse_iterator it){
-	set<uint8_t>(static_cast<uint8_t>(bit), 1, 0, it);
-}
-
-void BitStream::set(bool bit, size_t offset){
-	set(bit, begin()+offset);
-}
-
-void BitStream::rset(bool bit, size_t offset){
-	set(bit, rbegin()+offset);
+BitStream& BitStream::set(const T& bits, reverse_iterator it, size_t count, size_t offset){
+	set(reinterpret_cast<const uint8_t* const>(&bits), 
+			count, offset, static_cast<iterator_base>(it));
+	return *this;
 }
 
 template<typename T>
-T BitStream::get(iterator_base it, size_t count) const{
-	assert(count <= 8*sizeof(T));	// segmentation fault: cannot write pass T object!
+BitStream& BitStream::set(const T* const src, iterator it, size_t count, size_t offset){
+	set(reinterpret_cast<const uint8_t* const>(src), 
+			count, offset, static_cast<iterator_base>(it));
+	return *this;
+}
 
-	T out;
-	uint8_t* ptr = reinterpret_cast<uint8_t*>(&out);
+BitStream& BitStream::set(bool bit, iterator it){
+	set(reinterpret_cast<const uint8_t* const>(&bit), 1, 0, it);
+	return *this;
+}
 
-	memset(reinterpret_cast<void*>(&out), 0, sizeof(T));
-	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
-		ei = i / 8;
+BitStream& BitStream::set(bool bit, reverse_iterator it){
+	set(reinterpret_cast<const uint8_t* const>(&bit), 1, 0, it);
+	return *this;
+}
+
+void BitStream::get(uint8_t* const dest, size_t count, size_t offset, iterator_base it) const{
+	assert(dest);	// segmentation fault: cannot write pass array of T!
+	if(!(it+(count-1)).is_accessible())
+		fprintf(stderr, "WARNING[BitStream::get(<base>)]: Unable to get %zu bit(s)\n", count);
+
+	uint8_t* const ptr = dest;
+	memset(ptr, 0, (count+offset)/8);
+
+	for(size_t i=0, ei=0, mei=(it.is_reverse() ? 7 : 0); i<count && it.is_accessible(); ++i, ++it){
+		ei = (offset + i) / 8;
 		ptr[ei] |= it.get();
-		if(i+1 < count)
+		if(((offset + i + 1) % 8) && i + 1 < count)
 			ptr[ei] <<= 1;
 	}
+}
+
+template<typename T>
+T BitStream::get(iterator it, size_t count, size_t offset) const{
+	T out;
+	memset(reinterpret_cast<void*>(&out), 8*sizeof(T), 0);
+	get(reinterpret_cast<uint8_t*>(&out), count, offset, static_cast<iterator_base>(it));
 	return out;
 }
 
 template<typename T>
-void BitStream::get(T* const dest, size_t size, iterator_base it, size_t count) const{
-	assert(dest && count <= 8*size);	// segmentation fault: cannot write pass array of T!
-
-	uint8_t* ptr = reinterpret_cast<uint8_t*>(dest);
-	memset(ptr, 0, size);
-
-	for(size_t i=0, ei=0; i<count && it.is_valid(); ++i, ++it){
-		ei = i / 8;
-		ptr[ei] |= it.get();
-		if(i+1 < count)
-			ptr[ei] <<= 1;
-	}
+T BitStream::get(const_iterator it, size_t count, size_t offset) const{
+	T out;
+	memset(reinterpret_cast<void*>(&out), 8*sizeof(T), 0);
+	get(reinterpret_cast<uint8_t*>(&out), count, offset, static_cast<iterator_base>(it));
+	return out;
 }
 
 template<typename T>
-T BitStream::get(iterator it, size_t count) const{
-	return get<T>(static_cast<iterator_base>(it), count);
+T BitStream::get(reverse_iterator it, size_t count, size_t offset) const{
+	T out;
+	memset(reinterpret_cast<void*>(&out), 8*sizeof(T), 0);
+	get(reinterpret_cast<uint8_t*>(&out), count, offset, static_cast<iterator_base>(it));
+	return out;
 }
 
 template<typename T>
-T BitStream::get(const_iterator it, size_t count) const{
-	return get<T>(static_cast<iterator_base>(it), count);
+T BitStream::get(const_reverse_iterator it, size_t count, size_t offset) const{
+	T out;
+	memset(reinterpret_cast<void*>(&out), 8*sizeof(T), 0);
+	get(reinterpret_cast<uint8_t*>(&out), count, offset, static_cast<iterator_base>(it));
+	return out;
 }
 
 template<typename T>
-T BitStream::get(reverse_iterator it, size_t count) const{
-	return get<T>(static_cast<iterator_base>(it), count);
+void BitStream::get(T* const dest, iterator it, size_t count, size_t offset) const{
+	get(reinterpret_cast<uint8_t*>(dest), count, offset, static_cast<iterator_base>(it));
 }
 
 template<typename T>
-T BitStream::get(const_reverse_iterator it, size_t count) const{
-	return get<T>(static_cast<iterator_base>(it), count);
+void BitStream::get(T* const dest, const_iterator it, size_t count, size_t offset) const{
+	get(reinterpret_cast<uint8_t*>(dest), count, offset, static_cast<iterator_base>(it));
 }
 
 template<typename T>
-void BitStream::get(T* const dest, size_t size, iterator it, size_t count) const{
-	get<T>(dest, size, static_cast<iterator_base>(it), count);
+void BitStream::get(T* const dest, reverse_iterator it, size_t count, size_t offset) const{
+	get(reinterpret_cast<uint8_t*>(dest), count, offset, static_cast<iterator_base>(it));
 }
 
 template<typename T>
-void BitStream::get(T* const dest, size_t size, const_iterator it, size_t count) const{
-	get<T>(dest, size, static_cast<iterator_base>(it), count);
+void BitStream::get(T* const dest, const_reverse_iterator it, size_t count, size_t offset) const{
+	get(reinterpret_cast<uint8_t*>(dest), count, offset, static_cast<iterator_base>(it));
 }
 
-template<typename T>
-void BitStream::get(T* const dest, size_t size, reverse_iterator it, size_t count) const{
-	get<T>(dest, size, static_cast<iterator_base>(it), count);
+bool BitStream::get(iterator it) const{
+	return get<bool>(it, 1, 0);
 }
 
-template<typename T>
-void BitStream::get(T* const dest, size_t size, const_reverse_iterator it, size_t count) const{
-	get<T>(dest, size, static_cast<iterator_base>(it), count);
+bool BitStream::get(const_iterator it) const{
+	return get<bool>(it, 1, 0);
 }
 
-uint8_t BitStream::get(iterator it) const{
-	return get<uint8_t>(it, 1);
+bool BitStream::get(reverse_iterator it) const{
+	return get<bool>(it, 1, 0);
 }
 
-uint8_t BitStream::get(const_iterator it) const{
-	return get<uint8_t>(it, 1);
-}
-
-uint8_t BitStream::get(reverse_iterator it) const{
-	return get<uint8_t>(it, 1);
-}
-
-uint8_t BitStream::get(const_reverse_iterator it) const{
-	return get<uint8_t>(it, 1);
-}
-
-uint8_t BitStream::get(size_t offset) const{
-	return (offset > m_bit_count ? 2 : BIT_AT(offset%8, m_bytes[m_bytes.size()-1-offset/8]));
-}
-
-uint8_t BitStream::rget(size_t offset) const{
-	return (offset > m_bit_count ? 2 : BIT_AT(offset%8, m_bytes[m_bytes.size()-1-offset/8]));
+bool BitStream::get(const_reverse_iterator it) const{
+	return get<bool>(it, 1, 0);
 }
 
 /* > Modifiers < */
+
+BitStream::bit_proxy BitStream::at(size_t offset){
+	assert(offset <= m_bit_count);
+	return bit_proxy(begin()+offset);
+}
+
+BitStream::bit_proxy BitStream::rat(size_t offset){
+	assert(offset <= m_bit_count);
+	return bit_proxy(rbegin()+offset);
+}
+
+const BitStream::bit_proxy BitStream::at(size_t offset) const{
+	assert(offset <= m_bit_count);
+	return bit_proxy(cbegin()+offset);
+}
+
+const BitStream::bit_proxy BitStream::rat(size_t offset) const{
+	assert(offset <= m_bit_count);
+	return bit_proxy(crbegin()+offset);
+}
 
 void BitStream::resize(size_t bit_count){
 	// effective byte count
@@ -1148,91 +1360,115 @@ void BitStream::reset(size_t bit_count, bool bit){
 		byte = bit * 0xff;
 }
 
+void BitStream::shrink_to_fit(){
+	m_bytes.shrink_to_fit();
+}
+
+void BitStream::assign(const uint8_t* const src, size_t count, size_t offset, bool forward){
+	reset(count, 0);
+
+	if(forward)
+		set(src, count, offset, static_cast<iterator_base>(begin()));
+	else
+		set(src, count, offset, static_cast<iterator_base>(rbegin()));
+}
+
 template<typename T, bool forward=true>
 void BitStream::assign(const T& bits, size_t count, size_t offset){
-	size_t ei = 0;
-	const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&bits);
-	reset(count, 0);
-	
-	if(forward)
-		set<T>(bits, count, offset, begin());
-	else
-		set<T>(bits, count, offset, rbegin());
+	assign(reinterpret_cast<const uint8_t* const>(&bits), count, offset, forward);
+}
+
+template<typename T, bool forward=true>
+void BitStream::assign(const T* const src, size_t count, size_t offset){
+	assign(src, count, offset, forward);
 }
 
 template<typename T>
 void BitStream::rassign(const T& bits, size_t count, size_t offset){
-	assign<T, false>(bits, count, offset);
+	assign(reinterpret_cast<const uint8_t* const>(&bits), count, offset, false);
+}
+
+template<typename T>
+void BitStream::rassign(const T* const src, size_t count, size_t offset){
+	assign(src, count, offset, false);
 }
 
 void BitStream::push(const uint8_t* const src, size_t count, size_t offset, iterator_base it){
 	if(!src) return;
 
-	size_t n_alloc = 
-		static_cast<size_t>(ceil(static_cast<float>((m_bit_count + count - 8 * m_bytes.size())) / 8.f));
-	it.allocate_more(n_alloc);
-	m_bit_count += count;
+	if(it.offset + count > 8 * m_bytes.size()){
+		size_t n_alloc = static_cast<size_t>
+			(ceil(static_cast<float>((it.offset + count - 8 * m_bytes.size())) / 8.f));
+		it.allocate_more(n_alloc);
+		m_bit_count += count;
+	}
 
 	size_t ei = 0, mei = 0;
 	for(size_t i=0; i<count; ++i, ++it){
 		ei = (offset + i) / 8;
-		mei = 7 - (offset + i) % 8;
+		mei = it.is_reverse() ? (offset + i) % 8 : 7 - (offset + i) % 8;
 		it.set(src[ei] & MASK(mei));
 	}
 }
 
 template<typename T>
-void BitStream::push(const T& bits, size_t count, size_t offset, iterator it){
+void BitStream::push(const T& bits, iterator it, size_t count, size_t offset){
 	push(reinterpret_cast<const uint8_t* const>(&bits), 
 			count, offset, static_cast<iterator_base>(it));
 }
 
 template<typename T>
-void BitStream::push(const T& bits, size_t count, size_t offset, reverse_iterator it){
+void BitStream::push(const T& bits, reverse_iterator it, size_t count, size_t offset){
 	push(reinterpret_cast<const uint8_t* const>(&bits), 
 			count, offset, static_cast<iterator_base>(it));
 }
 
-void BitStream::push(const uint8_t* const src, size_t count, size_t offset, iterator it){
+template<typename T>
+void BitStream::push(const T* const src, iterator it, size_t count, size_t offset){
 	push(src, count, offset, static_cast<iterator_base>(it));
 }
 
-void BitStream::push(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it){
+template<typename T>
+void BitStream::push(const T* const src, reverse_iterator it, size_t count, size_t offset){
 	push(src, count, offset, static_cast<iterator_base>(it));
-}
-
-void BitStream::push(const uint8_t* const src, size_t count, size_t offset){
-	push(src, count, offset, begin());
-}
-
-void BitStream::rpush(const uint8_t* const src, size_t count, size_t offset){
-	push(src, count, offset, rbegin());
 }
 
 void BitStream::insert(const uint8_t* const src, size_t count, size_t offset, iterator_base it){
 	assert(src);
-	// TODO
-	// shift(it, it+offset);
-	// set(src, count, offset, it);
+
+	if(m_bit_count + count > 8 * m_bytes.size()){
+		size_t n_alloc = static_cast<size_t>
+			(ceil(static_cast<float>((m_bit_count + count - 8 * m_bytes.size())) / 8.f));
+		it.allocate_more(n_alloc);
+	}
+	m_bit_count += count;
+
+	iterator_base it2(this, m_bit_count, it.state);
+	printf("before shifting:\n");
+	print();
+	shift(count, it, it2);
+	printf("after shifting:\n");
+	print();
+	set(src, count, offset, it);
 }
 
 template<typename T>
-void BitStream::insert(const T& bits, size_t count, size_t offset, iterator it){
+void BitStream::insert(const T& bits, iterator it, size_t count, size_t offset){
 	insert(reinterpret_cast<const uint8_t* const>(&bits), 
 			count, offset, static_cast<iterator_base>(it));
 }
 
 template<typename T>
-void BitStream::insert(const T& bits, size_t count, size_t offset, reverse_iterator it){
+void BitStream::insert(const T& bits, reverse_iterator it, size_t count, size_t offset){
 	insert(reinterpret_cast<const uint8_t* const>(&bits), 
 			count, offset, static_cast<iterator_base>(it));
 }
 
-void BitStream::insert(const uint8_t* const src, size_t count, size_t offset, iterator it){
+void BitStream::insert(const uint8_t* const src, iterator it, size_t count, size_t offset){
 	insert(src, count, offset, static_cast<iterator_base>(it));
 }
 
-void BitStream::insert(const uint8_t* const src, size_t count, size_t offset, reverse_iterator it){
+void BitStream::insert(const uint8_t* const src, reverse_iterator it, size_t count, size_t offset){
 	insert(src, count, offset, static_cast<iterator_base>(it));
 }
 
@@ -1242,14 +1478,6 @@ void BitStream::insert(bool bit, iterator it){
 
 void BitStream::insert(bool bit, reverse_iterator it){
 	insert(reinterpret_cast<const uint8_t* const>(&bit), 1, 0, static_cast<iterator_base>(it));
-}
-
-void BitStream::insert(bool bit, size_t offset){
-	insert(bit, begin()+offset);
-}
-
-void BitStream::rinsert(bool bit, size_t offset){
-	insert(bit, rbegin()+offset);
 }
 
 void BitStream::pop(iterator_base it1, iterator_base it2){
@@ -1282,7 +1510,8 @@ void BitStream::pop(reverse_iterator it1, reverse_iterator it2){
 
 void BitStream::shift(size_t n, iterator_base it1, iterator_base it2){
 	rotate(n, it1, it2);
-	for(; it1!=it2; ++it1)
+	iterator_base tmp = it1 + n;
+	for(; it1!=tmp; ++it1)
 		it1.set(0);
 }
 
@@ -1313,21 +1542,41 @@ void BitStream::shiftl(size_t n){
 }
 
 void BitStream::rotate(size_t n, iterator_base it1, iterator_base it2){
-	// TODO: need testing
 	size_t count = it2 - it1;
 	size_t en = n % count;	// effective n
 
-	size_t n_bytes[2] = { en / 8 + en % 8, (count - en) / 8 + (count - en) % 8 };
+	if(it1.is_reverse()){
+		it1.offset = it1.m_cbs->m_bit_count - it1.offset;
+		it1.state &= ~iterator::REVERSE_MASK;
+		
+		it2.offset = it2.m_cbs->m_bit_count - it2.offset;
+		it2.state &= ~iterator::REVERSE_MASK;
+		
+		return rotate(count - en, it2, it1);
+	}
+
+	size_t n_bytes[2] = { en / 8 + (bool)(en % 8), (count - en) / 8 + (bool)((count - en) % 8) };
 	uint8_t* chunks[2];
+
+	chunks[0] = new uint8_t[n_bytes[0]];
+	chunks[1] = new uint8_t[n_bytes[1]];
+
+	memset(chunks[0], 0, n_bytes[0]);
+	memset(chunks[1], 0, n_bytes[1]);
+
+	get(chunks[0], en, 0, it2-en);
+	get(chunks[1], count-en, 0, it1);
 	
-	chunks[0] = reinterpret_cast<uint8_t*>(alloca(n_bytes[0]));
-	chunks[1] = reinterpret_cast<uint8_t*>(alloca(n_bytes[1]));
+	if(en % 8)
+		chunks[0][n_bytes[0]-1] <<= (8 - en % 8);
+	if((count - en) % 8)
+		chunks[1][n_bytes[1]-1] <<= (8 - (count - en) % 8);
 
-	get<uint8_t>(chunks[0], n_bytes[0], it2-en, en);
-	get<uint8_t>(chunks[1], n_bytes[1], it1, count-en);
+	set(chunks[1], count-en, 0, it1+en);
+	set(chunks[0], en, 0, it1);
 
-	set(chunks[1], count-en, 0, it1, count-en);
-	set(chunks[0], en, 0, it2-en, en);
+	delete chunks[0];
+	delete chunks[1];
 }
 
 void BitStream::rotate(size_t n, iterator it1, iterator it2){
@@ -1356,22 +1605,86 @@ void BitStream::rotatel(size_t n){
 	rotate(n, static_cast<iterator_base>(begin()), static_cast<iterator_base>(end()));
 }
 
+void BitStream::memcpy(size_t n, iterator_base it_dest, iterator_base it_src){
+	assert((it_dest+n).is_accessible() && (it_src+n).is_accessible()); // segmentation fault
+
+	for(size_t i=0; i<n; ++i, ++it_dest, ++it_src)
+		it_dest.set(it_src.get());
+}
+
+void BitStream::memcpy(size_t n, iterator it_dest, const_iterator it_src){
+	memcpy(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memcpy(size_t n, reverse_iterator it_dest, const_iterator it_src){
+	memcpy(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memcpy(size_t n, iterator it_dest, const_reverse_iterator it_src){
+	memcpy(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memcpy(size_t n, reverse_iterator it_dest, const_reverse_iterator it_src){
+	memcpy(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memmov(size_t n, iterator_base it_dest, iterator_base it_src){
+	assert((it_dest+n).is_accessible() && (it_src+n).is_accessible()); // segmentation fault
+
+	size_t n_byte = n / 8 + (bool)(n % 8);
+	size_t offset = n % 8 ? 8 - n % 8 : 0;
+	uint8_t* chunk = new uint8_t[n_byte];
+
+	memset(chunk, 0, n_byte);
+	get(chunk, n, 0, it_src);
+
+	if(!it_dest.is_reverse())
+		chunk[n_byte-1] <<= offset;
+
+	set(chunk, n, 0, it_dest);
+	delete chunk;
+}
+
+void BitStream::memmov(size_t n, iterator it_dest, const_iterator it_src){
+	memmov(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memmov(size_t n, reverse_iterator it_dest, const_iterator it_src){
+	memmov(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memmov(size_t n, iterator it_dest, const_reverse_iterator it_src){
+	memmov(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memmov(size_t n, reverse_iterator it_dest, const_reverse_iterator it_src){
+	memmov(n, static_cast<iterator_base>(it_dest), static_cast<iterator_base>(it_src));
+}
+
+void BitStream::memflp(size_t n, iterator it){
+	memmov(n, it, crend()-(it.offset+n));
+}
+
+void BitStream::memflp(size_t n, reverse_iterator it){
+	memmov(n, it, cend()-(it.offset+n));
+}
+
 /* > Operators < */
 
-BitStream::iterator BitStream::operator[](size_t offset){
-	return iterator(this, offset, 0);
+BitStream::bit_proxy BitStream::operator[](size_t offset){
+	return bit_proxy(begin()+offset);
 }
 
-bool BitStream::operator()(size_t offset) const{
-	return (cbegin()+offset).get();
+const BitStream::bit_proxy BitStream::operator[](size_t offset) const{
+	return bit_proxy(cbegin()+offset);
 }
 
-BitStream& BitStream::operator()(size_t offset, bool bit, bool reverse){
-	if(reverse)
-		(rbegin() += offset).set(bit);
-	else
-		(begin() += offset).set(bit);
-	return *this;
+BitStream::bit_proxy BitStream::operator()(size_t offset){
+	return bit_proxy(rbegin()+offset);
+}
+
+const BitStream::bit_proxy BitStream::operator()(size_t offset) const{
+	return bit_proxy(crbegin()+offset);
 }
 
 BitStream BitStream::operator!() const{
@@ -1517,13 +1830,12 @@ BitStream& BitStream::operator=(uint64_t bytes){
 }
 
 std::ostream& operator<<(std::ostream& out, const BitStream& bs){
-	// TODO
-	return out;
+	return (out << *(bs.m_read_iterator++));
 }
 
 std::istream& operator>>(std::istream& in, BitStream& bs){
-	// TODO
-	return in;
+	BitStream::bit_proxy bp = *(bs.m_write_iterator++);
+	return in >> bp;
 }
 
 #endif
