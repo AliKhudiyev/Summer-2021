@@ -33,18 +33,31 @@ int main(){
 
 	printf("reading 1\n");
 	bs.print(std::cout, true);
-
 	printf("bit count: %zu\n", bs.size());
+	// bs.insert(true, bs.rbegin());
 
-	// bs.rotate(3*bs.size()+8, bs.rbegin(), bs.rend());
+	// bs.rotate(1, bs.begin(), bs.end());
 	// bs.rotate(1, bs.rbegin()+1, bs.rbegin()+28);
 	// bs.shift(1, bs.rbegin()+1, bs.rend()-1);
 	// bs.rotate(1, bs.rbegin()+1, bs.rend()-1);
+	
+	// bs.memmov(3, bs.begin()+13, bs.crend()-8);
+	// bs.memmov(3, bs.begin()+13, bs.cend()-10);
 	// bs.memmov(3, bs.rbegin()+13, bs.crend()-8);
-	bs.insert<char>('z', bs.begin()+16);
+	// bs.memmov(3, bs.rbegin()+13, bs.cend()-10);
+	
+	// bs.insert<int>(0x05060708, bs.begin()+16, 16);
+	// bs.insert<int>(0x05060708, bs.rend()-16, 16);
+	
 	// bs.memcpy(8, bs.begin()+16, bs.crend()-24);
-	bs.memflp(8, bs.begin()+16);
-	bs.memflp(8, bs.rbegin()+16);
+	// bs.memmov(8, bs.rend()-8, bs.cbegin());
+	// bs.memflp(8, bs.begin()+16);
+	// bs.memflp(7, bs.begin()+2);
+	// bs.memflp(19, bs.rbegin()+6);
+	
+	// bs.set<char>(65, bs.rend()-8);
+	// bs.set<char>(65, bs.begin());
+	// printf("get results: %u and %u\n", bs.get<uint8_t>(bs.cbegin()), bs.get<uint8_t>(bs.crend()-8));
 	printf("reading 2\n");
 	bs.print();
 
