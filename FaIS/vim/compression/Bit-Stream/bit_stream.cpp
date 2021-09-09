@@ -4,14 +4,18 @@
 #include <iostream>
 
 struct BitChunk{
-	char chunks[4];
+	char c[4];
 };
 
 int main(){
-	printf("BitStream v0.1 testing...\n\n");
-
-	BitStream bs(8, 1);
-	bs.print();
-
+	BitChunk bc { 0x41, 0x42, 0x43, 0x44 };
+        
+	BitStream bs;
+	bs.push<BitChunk>(bc, bs.begin());
+	auto chunk = bs.get<BitChunk>(bs.begin());
+	
+	printf("%c %c %c %c\n", 
+		chunk.c[0], chunk.c[1], chunk.c[2], chunk.c[3]);
+	
 	return 0;
 }

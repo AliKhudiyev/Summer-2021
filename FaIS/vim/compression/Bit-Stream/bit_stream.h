@@ -33,19 +33,23 @@
 #define BIT_AT(n, B)	((MASK(n) & (B)) >> (n))
 
 
-/*
- * BitStream class
- * Bit indexing starts from the rightmost bit in the stream.
- * Any `offset` value in the stream refers to that of index.
- * Pushing bits from a `source` requires `offset` value 
- * which has be interpreted in a normal C-indexing manner.
- *
- * Example bit stream:	0110'1000 0100'1111
- * Indices:				.......98 7654 3210
- * Offsets:				.......98 7654 3210
- *
- * Example source:		1010'1100 0001'0000 (const uint8_t* const)
- * Pushing (5, 2):		10 0110'1000 0100'1111
+/* BitStream class
+ * 
+ * Flexible stream of bits that can be manipulated with 13 main functions:
+ * 		1. set - set an interval of bits in the stream to 0/1
+ * 		2. get - get an interval of bits in the stream
+ * 		3. assign - reintialize the bitstream by filling in given bits
+ * 		3. push - push bits to the stream from any arbitrary point and by an arbitrary direction
+ * 		4. insert - insert bits to the stream from any arbitrary point and by an arbitrary direction
+ * 		5. pop - pop an interval of bits from the stream
+ * 		6. rotate - rotate an interval of bits in the stream to either direction
+ * 		7. shift - shift an interval of bits in the stream to either direction
+ * 		8. flip - flips an interval of bits in the stream
+ * 		9. memcpy copies an interval of bits to another one in the stream
+ * 		10. memmov - moves(copies) an interval of bits to another one in the stream
+ * 		11. memflp - flips(reverses) an interval of bits in the stream
+ * 		12. substream - creates a new substream from the stream
+ * 		13. to_string - converts the stream of bits into a string of bits
  */
 class BitStream{
 	// ONLY FOR TESTING
@@ -123,6 +127,7 @@ class BitStream{
 		/* Setters & Getters */
 		protected:
 		void set(bool bit);
+		void flip();
 		public:
 		const bool get() const;
 
@@ -146,11 +151,7 @@ class BitStream{
 		iterator_base operator++(int);
 		iterator_base operator--(int);
 
-		iterator_base& operator=(const iterator_base& it);
-		iterator_base& operator=(bool bit);
-
 		size_t operator-(const iterator_base& it) const;
-
 		inline bit_proxy operator*();
 
 		protected:
@@ -271,12 +272,11 @@ class BitStream{
 		iterator operator--(int);
 
 		iterator& operator=(const iterator& it);
-		iterator& operator=(bool bit);
-
 		size_t operator-(const iterator_base& it) const;
+		inline bit_proxy operator*() const;
 
 		void set(bool bit);
-		inline bit_proxy operator*() const;
+		void flip();
 
 		protected:
 		iterator(BitStream* bs_, size_t offset_, uint8_t state_):
@@ -304,10 +304,7 @@ class BitStream{
 		const_iterator operator--(int);
 
 		const_iterator& operator=(const iterator_base& it);
-		const_iterator& operator=(bool bit);
-
 		size_t operator-(const iterator_base& it) const;
-
 		inline const bit_proxy operator*() const;
 
 		protected:
@@ -336,12 +333,11 @@ class BitStream{
 		reverse_iterator operator--(int);
 
 		reverse_iterator& operator=(const iterator_base& it);
-		reverse_iterator& operator=(bool bit);
-
 		size_t operator-(const iterator_base& it) const;
+		inline bit_proxy operator*() const;
 
 		void set(bool bit);
-		inline bit_proxy operator*() const;
+		void flip();
 
 		protected:
 		reverse_iterator(BitStream* bs_, size_t offset_, uint8_t state_):
@@ -369,10 +365,7 @@ class BitStream{
 		const_reverse_iterator operator--(int);
 
 		const_reverse_iterator& operator=(const iterator_base& it);
-		const_reverse_iterator& operator=(bool bit);
-
 		size_t operator-(const iterator_base& it) const;
-
 		inline const bit_proxy operator*() const;
 
 		protected:
@@ -601,6 +594,11 @@ class BitStream{
 	void rotater(size_t n=1);
 	void rotatel(size_t n=1);
 
+	void flip(iterator it1, iterator it2);
+	void flip(reverse_iterator it1, reverse_iterator it2);
+	void flip(iterator it, size_t offset=-1);
+	void flip(reverse_iterator it, size_t offset=-1);
+
 	void memcpy(size_t n, iterator it_dest, const_iterator it_src);
 	void memcpy(size_t n, reverse_iterator it_dest, const_iterator it_src);
 	void memcpy(size_t n, iterator it_dest, const_reverse_iterator it_src);
@@ -648,7 +646,19 @@ class BitStream{
 		return out;
 	}
 
-	std::string to_string() const;
+	std::string to_string() const{
+		std::string out(m_bit_count, '0');
+		size_t i = 0;
+		for(auto it=cbegin(); it!=cend(); ++it, ++i)
+			out[i] = '0' + it.get();
+		return out;
+	}
+	void from_string(const std::string& bit_chars){
+		reset(bit_chars.size(), 0);
+		for(size_t i=0; i<bit_chars.size(); ++i)
+			operator[](i) = bit_chars[i] - '0';
+	}
+
 	template<typename T>
 	T cast_to(size_t count=8*sizeof(T), size_t offset=0) const;
 	template<typename T>
@@ -680,6 +690,10 @@ class BitStream{
 
 	bool operator==(const BitStream& bs) const;
 	bool operator!=(const BitStream& bs) const;
+	bool operator<(const BitStream& bs) const;
+	bool operator>(const BitStream& bs) const;
+	bool operator<=(const BitStream& bs) const;
+	bool operator>=(const BitStream& bs) const;
 	
 	BitStream operator+(const BitStream& bs) const;
 	BitStream operator-(const BitStream& bs) const;
@@ -808,6 +822,17 @@ class BitStream{
 
 	/* Args:
 	 *
+	 * it1	- start iterator
+	 * it2	- stop iterator
+	 *
+	 * Flips the bits in the interval [it1, it2). If the bit is 0, it is
+	 * flipped to become 1 and vice versa.
+	 * Therefore, flipping bits does not alter any meta-state of the stream.
+	 */
+	void flip(iterator_base it1, iterator_base it2);
+
+	/* Args:
+	 *
 	 * n			- how many bits to copy
 	 * it_dest		- where to begin copying to; destination
 	 * it_src		- where to begin copying from; source
@@ -867,6 +892,10 @@ const bool BitStream::iterator_base::get() const{
 	size_t ei = get_ei();
 	size_t mei = get_mei();
 	return BIT_AT(mei, bytes[ei]);
+}
+
+void BitStream::iterator_base::flip(){
+	set(!get());
 }
 
 BitStream::iterator_base BitStream::iterator_base::operator+(size_t offset) const{
@@ -1041,17 +1070,16 @@ BitStream::iterator& BitStream::iterator::operator=(const iterator& it){
 	return *this;
 }
 
-BitStream::iterator& BitStream::iterator::operator=(bool bit){
-	set(bit);
-	return *this;
-}
-
 size_t BitStream::iterator::operator-(const iterator_base& it) const{
 	return offset - it.offset;
 }
 
 void BitStream::iterator::set(bool bit){
 	dynamic_iterator_base::set(bit);
+}
+
+void BitStream::iterator::flip(){
+	dynamic_iterator_base::flip();
 }
 
 BitStream::bit_proxy BitStream::iterator::operator*() const{
@@ -1135,11 +1163,6 @@ BitStream::const_iterator& BitStream::const_iterator::operator=(const iterator_b
 	m_bs = it.m_bs;
 	offset = it.offset;
 	state = it.state;
-	return *this;
-}
-
-BitStream::const_iterator& BitStream::const_iterator::operator=(bool bit){
-	set(bit);
 	return *this;
 }
 
@@ -1232,17 +1255,16 @@ BitStream::reverse_iterator& BitStream::reverse_iterator::operator=(const iterat
 	return *this;
 }
 
-BitStream::reverse_iterator& BitStream::reverse_iterator::operator=(bool bit){
-	set(bit);
-	return *this;
-}
-
 size_t BitStream::reverse_iterator::operator-(const iterator_base& it) const{
 	return offset - it.offset;
 }
 
 void BitStream::reverse_iterator::set(bool bit){
 	dynamic_iterator_base::set(bit);
+}
+
+void BitStream::reverse_iterator::flip(){
+	dynamic_iterator_base::flip();
 }
 
 BitStream::bit_proxy BitStream::reverse_iterator::operator*() const{
@@ -1327,11 +1349,6 @@ BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator=(
 	m_bs = it.m_bs;
 	offset = it.offset;
 	state = it.state;
-	return *this;
-}
-
-BitStream::const_reverse_iterator& BitStream::const_reverse_iterator::operator=(bool bit){
-	set(bit);
 	return *this;
 }
 
@@ -1786,6 +1803,11 @@ void BitStream::rotatel(size_t n){
 	rotate(n, static_cast<iterator_base>(begin()), static_cast<iterator_base>(end()));
 }
 
+void BitStream::flip(iterator_base it1, iterator_base it2){
+	while(it1 != it2)
+		(it1++).flip();
+}
+
 void BitStream::memcpy(size_t n, iterator_base it_dest, iterator_base it_src){
 	assert((it_dest+(n-1)).is_accessible() && (it_src+(n-1)).is_accessible()); // segmentation fault
 
@@ -1920,22 +1942,25 @@ BitStream BitStream::operator~() const{
 }
 
 BitStream BitStream::operator&(const BitStream& bs) const{
-	BitStream out = *this;
-	for(size_t i=0; i<m_bytes.size(); ++i)
+	size_t count = m_bit_count > bs.m_bit_count ? m_bit_count : bs.m_bit_count;
+	BitStream out(count, 0);
+	for(size_t i=0; i<count/8; ++i)
 		out.m_bytes[i] = m_bytes[i] & bs.m_bytes[i];
 	return out;
 }
 
 BitStream BitStream::operator|(const BitStream& bs) const{
-	BitStream out = *this;
-	for(size_t i=0; i<m_bytes.size(); ++i)
+	size_t count = m_bit_count > bs.m_bit_count ? m_bit_count : bs.m_bit_count;
+	BitStream out(count, 0);
+	for(size_t i=0; i<count/8; ++i)
 		out.m_bytes[i] = m_bytes[i] | bs.m_bytes[i];
 	return out;
 }
 
 BitStream BitStream::operator^(const BitStream& bs) const{
-	BitStream out = *this;
-	for(size_t i=0; i<m_bytes.size(); ++i)
+	size_t count = m_bit_count > bs.m_bit_count ? m_bit_count : bs.m_bit_count;
+	BitStream out(count, 0);
+	for(size_t i=0; i<count/8; ++i)
 		out.m_bytes[i] = m_bytes[i] ^ bs.m_bytes[i];
 	return out;
 }
@@ -1971,14 +1996,12 @@ BitStream& BitStream::operator^=(const BitStream& bs){
 }
 
 BitStream& BitStream::operator<<=(size_t n){
-	// TODO
-	// shiftl(0, n);
+	shift(n, rbegin(), rend());
 	return *this;
 }
 
 BitStream& BitStream::operator>>=(size_t n){
-	// TODO
-	// shiftr(0, n);
+	shift(n, begin(), end());
 	return *this;
 }
 
@@ -1997,20 +2020,68 @@ bool BitStream::operator!=(const BitStream& bs) const{
 	return !(*this == bs);
 }
 
+bool BitStream::operator<(const BitStream& bs) const{
+	size_t excess = 0;
+	uint8_t chunks[2];
+
+	const_reverse_iterator begins[2], ends[2];
+	begins[0] = crbegin(); begins[1] = bs.crbegin();
+	ends[0] = crend(); ends[1] = bs.crend();
+
+	if(m_bit_count > bs.m_bit_count){
+		excess = m_bit_count - bs.m_bit_count;
+		for(size_t i=0; i<excess; ++i, ++begins[0]){
+			if(begins[0].get()) return false;
+		}
+	} else{
+		excess = bs.m_bit_count - m_bit_count;
+		for(size_t i=0; i<excess; ++i, ++begins[1]){
+			if(begins[1].get()) return true;
+		}
+	}
+
+	for(; begins[0]!=ends[0] && begins[1]!=ends[1]; ++begins[0], ++begins[1]){
+		if(begins[0].get() < begins[1].get()) return true;
+	}
+	return false;
+}
+
+bool BitStream::operator>(const BitStream& bs) const{
+	return (*this != bs) && !(*this < bs);
+}
+
+bool BitStream::operator<=(const BitStream& bs) const{
+	return (*this < bs) || (*this == bs);
+}
+
+bool BitStream::operator>=(const BitStream& bs) const{
+	return (*this > bs) || (*this == bs);
+}
+
 BitStream BitStream::operator+(const BitStream& bs) const{
-	BitStream out;
-	// TODO
+	BitStream out = *this;
+	out += bs;
 	return out;
 }
 
 BitStream BitStream::operator-(const BitStream& bs) const{
-	BitStream out;
-	// TODO
+	BitStream out = *this;
+	out -= bs;
 	return out;
 }
 
 BitStream& BitStream::operator+=(const BitStream& bs){
-	// TODO
+	size_t count = m_bit_count > bs.m_bit_count ? m_bit_count : bs.m_bit_count;
+	bool carry = 0;
+	BitStream out(count, 0);
+	for(size_t i=0; i<count; ++i){
+		uint8_t tmp = operator[](i) + bs[i] + carry;
+		if(tmp == 2)
+			carry = 1;
+		else
+			carry = 0;
+		operator[](i) = tmp;
+	}
 	return *this;
 }
 
