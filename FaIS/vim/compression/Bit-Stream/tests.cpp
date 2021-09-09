@@ -66,13 +66,11 @@ class BitStreamTest:	public BitStream,
 
 	public:
 	void setUp(){
-		// printf("setUp\n");
 		bs = new BitStream();
 		cbs = new BitStream();
 	}
 
 	void tearDown(){
-		// printf("tearDown\n");
 		delete bs;
 		delete cbs;
 	}
@@ -145,18 +143,22 @@ class BitStreamTest:	public BitStream,
 	void testSetter(){
 		// Assertions
 		uint32_t word = 0x04030201;
-		size_t n = bs->set<uint32_t>(word, bs->end());
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+
+		size_t n = bs->set(ptr, 4, 32, 0, bs->end());
 
 		CPPUNIT_ASSERT(n == 0);
 		CPPUNIT_ASSERT(bs->m_bit_count == 0);
 		CPPUNIT_ASSERT(bs->m_bytes.size() == 0);
 
 		bs->reset(13, 0);
-		n = bs->set<uint32_t>(word, bs->rbegin());
+		n = bs->set(ptr, 4, 32, 18, bs->begin());
 
 		CPPUNIT_ASSERT(n == 13);
 		CPPUNIT_ASSERT(bs->m_bit_count == 13);
 		CPPUNIT_ASSERT(bs->m_bytes.size() == 2);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x08);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x30);
 
 		n = bs->set<uint8_t>(0x05, bs->begin());
 
@@ -198,12 +200,14 @@ class BitStreamTest:	public BitStream,
 	void testGetter(){
 		// Assertions
 		uint32_t word;
-		size_t n = bs->get<uint32_t>(bs->cbegin());
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+
+		size_t n = bs->get(ptr, 4, 32, 0, bs->cbegin());
 
 		CPPUNIT_ASSERT(n == 0);
 
 		bs->reset(13, 1);
-		n = bs->get<uint32_t>(&word, bs->cbegin(), 32);
+		n = bs->get(ptr, 4, 32, 0, bs->cbegin());
 
 		CPPUNIT_ASSERT(n == 13);
 		CPPUNIT_ASSERT(word == 0x0000f8ff);
@@ -212,10 +216,46 @@ class BitStreamTest:	public BitStream,
 	// Modifiers
 	void testMeta(){
 		// Assertions
+		CPPUNIT_ASSERT(bs->size() == 0);
+
+		bs->reset(13, 1);
+		CPPUNIT_ASSERT(bs->size() == 13);
+		CPPUNIT_ASSERT(bs->buffer_size() == 16);
+		
+		bs->reset(184, 0);
+		CPPUNIT_ASSERT(bs->size() == 184);
+		CPPUNIT_ASSERT(bs->buffer_size() == 184);
 	}
 	
 	void testSeek(){
 		// Assertions
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 0);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 0);
+
+		bs->seek(bs->begin()+4);
+		bs->seek(bs->crbegin()+4);
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 0);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 0);
+
+		bs->reset(13, 0);
+
+		bs->seek(bs->crbegin()+4);
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 4);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 0);
+
+		bs->seek(bs->rbegin()+4);
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 4);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 4);
+
+		bs->seek(bs->cbegin());
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 0 && bs->m_read_iterator.state == 1);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 4 && bs->m_write_iterator.state == 2);
+
+		bs->reset(3, 0);
+		CPPUNIT_ASSERT(bs->m_read_iterator.offset == 0 && bs->m_read_iterator.state == 1);
+		CPPUNIT_ASSERT(bs->m_read_iterator.is_accessible() == true);
+		CPPUNIT_ASSERT(bs->m_write_iterator.offset == 4 && bs->m_write_iterator.state == 2);
+		CPPUNIT_ASSERT(bs->m_write_iterator.is_accessible() == false);
 	}
 
 	void testAt(){
@@ -232,22 +272,129 @@ class BitStreamTest:	public BitStream,
 
 	void testShrink(){
 		// Assertions
+		CPPUNIT_ASSERT(1);
 	}
 
 	void testAssign(){
+		uint64_t dword = 0x0102030405060708;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&dword);
+
 		// Assertions
+		bs->assign(ptr, 8, 64, 0, true);
+
+		CPPUNIT_ASSERT(bs->size() == 64);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->buffer_size() == 64);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x80);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[2] == 0xc0);
+		CPPUNIT_ASSERT(bs->m_bytes[3] == 0x20);
+		CPPUNIT_ASSERT(bs->m_bytes[4] == 0xa0);
+		CPPUNIT_ASSERT(bs->m_bytes[5] == 0x60);
+		CPPUNIT_ASSERT(bs->m_bytes[6] == 0xe0);
+		CPPUNIT_ASSERT(bs->m_bytes[7] == 0x10);
+
+		bs->assign(ptr, 8, 15, 34, false);
+
+		CPPUNIT_ASSERT(bs->size() == 15);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->buffer_size() == 16);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x08);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x06);
 	}
 
 	void testPush(){
+		uint32_t word = 0x01020304;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+
 		// Assertions
+		bs->push(ptr, 4, 32, 0, bs->end());
+
+		CPPUNIT_ASSERT(bs->m_bit_count == 32);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 4);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x80);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[2] == 0xc0);
+		CPPUNIT_ASSERT(bs->m_bytes[3] == 0x20);
+
+		word = 0x04030201;
+		bs->push(ptr, 4, 32, 0, bs->begin());
+
+		CPPUNIT_ASSERT(bs->m_bit_count == 32);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 4);
+		CPPUNIT_ASSERT(bs->m_bytes[3] == 0x80);
+		CPPUNIT_ASSERT(bs->m_bytes[2] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0xc0);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x20);
+		
+		bs->push(ptr, 4, 16, 16, bs->rbegin());
+
+		CPPUNIT_ASSERT(bs->m_bit_count == 32);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 4);
+		CPPUNIT_ASSERT(bs->m_bytes[3] == 0x80);
+		CPPUNIT_ASSERT(bs->m_bytes[2] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x04);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x03);
+
+		bs->push(ptr, 4, 12, 20, bs->rend());
+
+		CPPUNIT_ASSERT(bs->m_bit_count == 44);
+		CPPUNIT_ASSERT(bs->m_offset == 4);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 6);
+		CPPUNIT_ASSERT(bs->m_bytes[5] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[4] == 0x30);
+		CPPUNIT_ASSERT(bs->m_bytes[3] == 0x80);
+		CPPUNIT_ASSERT(bs->m_bytes[2] == 0x40);
+		CPPUNIT_ASSERT(bs->m_bytes[1] == 0x04);
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x03);
 	}
 
 	void testInsert(){
+		uint32_t word = 0x01020304;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+
 		// Assertions
+		bs->insert(ptr, 4, 3, 5, bs->begin());
+
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x01);
+
+		bs->reset(0);
+		bs->insert(ptr, 4, 3, 5, bs->rbegin());
+
+		CPPUNIT_ASSERT(bs->m_bytes[0] == 0x80);
 	}
 
 	void testPop(){
+		bs->reset(27, 0);
+		bs->set<uint32_t>(0x01020304, bs->rbegin());
+
+		CPPUNIT_ASSERT(bs->m_bit_count == 27);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 4);
+
 		// Assertions
+		bs->pop(bs->rbegin(), bs->rbegin()+3);
+		CPPUNIT_ASSERT(bs->m_bit_count == 24);
+		CPPUNIT_ASSERT(bs->m_offset == 3);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 4);
+
+		bs->pop(bs->rbegin(), bs->rbegin()+5);
+		CPPUNIT_ASSERT(bs->m_bit_count == 19);
+		CPPUNIT_ASSERT(bs->m_offset == 0);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 3);
+
+		bs->pop(bs->end()-1, bs->end());
+		CPPUNIT_ASSERT(bs->m_bit_count == 18);
+		CPPUNIT_ASSERT(bs->m_offset == 1);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 3);
+
+		bs->pop(bs->rend()-1, bs->rend());
+		CPPUNIT_ASSERT(bs->m_bit_count == 17);
+		CPPUNIT_ASSERT(bs->m_offset == 2);
+		CPPUNIT_ASSERT(bs->m_bytes.size() == 3);
 	}
 
 	void testShift(){
@@ -263,7 +410,22 @@ class BitStreamTest:	public BitStream,
 	}
 
 	void testSubstream(){
+		bs->assign<uint32_t, false>(0x01020304);
+
+		BitStream sbs;
 		// Assertions
+		sbs = bs->substream(bs->rbegin()+1, bs->rend()-14);
+		CPPUNIT_ASSERT(sbs.m_bit_count == 17);
+		CPPUNIT_ASSERT(sbs.m_offset == 0);
+		CPPUNIT_ASSERT(sbs.m_bytes.size() == 3);
+
+		sbs = bs->substream(bs->rbegin(), bs->rbegin()+23);
+		CPPUNIT_ASSERT(sbs.m_bit_count == 23);
+		CPPUNIT_ASSERT(sbs.m_offset == 0);
+		CPPUNIT_ASSERT(sbs.m_bytes.size() == 3);
+		CPPUNIT_ASSERT(sbs.m_bytes[2] == 0x20);
+		CPPUNIT_ASSERT(sbs.m_bytes[1] == 0xc0);
+		CPPUNIT_ASSERT(sbs.m_bytes[0] == 0x40);
 	}
 
 	void testCast(){

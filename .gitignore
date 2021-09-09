@@ -2,6 +2,7 @@
 DDaCA/Lecture-Slides/
 DDaCA/Lectures
 FRS/
+build/
 
 # Files
 .DS_Store
