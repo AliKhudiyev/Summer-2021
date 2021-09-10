@@ -6,3 +6,4 @@ build/
 
 # Files
 .DS_Store
+.env
