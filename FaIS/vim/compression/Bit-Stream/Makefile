@@ -4,13 +4,14 @@ LINKER_FLAG = -lcppunit
 BUILD_DIR = build
 
 
-all: bit_stream tests
+all: ${BUILD_DIR}/bit_stream ${BUILD_DIR}/tests
 
-bit_stream: bit_stream.cpp
-	${CXX} ${CXX_FLAGS} $^ -o ${BUILD_DIR}/$@
+${BUILD_DIR}/bit_stream: bit_stream.cpp bit_stream.h
+	${CXX} ${CXX_FLAGS} bit_stream.cpp  -o $@
 
-tests: tests.cpp
-	${CXX} ${CXX_FLAGS} ${LINKER_FLAG} $^ -o ${BUILD_DIR}/$@
+${BUILD_DIR}/tests: tests.cpp
+	${CXX} ${CXX_FLAGS} ${LINKER_FLAG} $^ -o $@
 
-run_tests: tests
-	${BUILD_DIR}/$^
+check_leaks: ${BUILD_DIR}/bit_stream ${BUILD_DIR}/tests
+	leaks -atExit -- ${BUILD_DIR}/bit_stream
+	leaks -atExit -- ${BUILD_DIR}/tests

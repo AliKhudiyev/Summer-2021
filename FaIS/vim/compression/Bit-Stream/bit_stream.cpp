@@ -16,6 +16,20 @@ int main(){
 	
 	printf("%c %c %c %c\n", 
 		chunk.c[0], chunk.c[1], chunk.c[2], chunk.c[3]);
+
+	bs.assign<uint32_t>(0x01020304);
+	auto str = bs.to_string();
+	printf("%s\n", str.c_str());
+
+	bs.from_string("011001");
+	bs.print();
+
+	BitStream new_bs("110");
+	new_bs.print();
+
+	// bs.push(false, bs.rbegin());
+	bs.insert(bs.begin(), new_bs.cbegin(), new_bs.cend());
+	bs.print();
 	
 	return 0;
 }

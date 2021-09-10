@@ -45,6 +45,7 @@ class BitStreamTest:	public BitStream,
 	CPPUNIT_TEST(testPop);
 	CPPUNIT_TEST(testShift);
 	CPPUNIT_TEST(testRotate);
+	CPPUNIT_TEST(testFlip);
 	CPPUNIT_TEST(testMem);
 	CPPUNIT_TEST(testSubstream);
 	CPPUNIT_TEST(testCast);
@@ -58,7 +59,6 @@ class BitStreamTest:	public BitStream,
 
 	// -------------------------------------------
 	CPPUNIT_TEST_SUITE_END();
-	// CPPUNIT_TEST_SUITE_REGISTRATION(BitStreamTest);
 
 	private:
 	BitStream* bs;
@@ -398,15 +398,48 @@ class BitStreamTest:	public BitStream,
 	}
 
 	void testShift(){
+		uint32_t word = 0xa1b2c3d4;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+		bs->assign(ptr, 4, 30, 1, true);
+		BitStream tmp = *bs;
+		bs->print();
+
 		// Assertions
+		bs->shift(3, bs->begin()+2, bs->end()-18);
+		bs->print();
+		bs->shift(3, bs->rbegin()+18, bs->rend()-2);
+		bs->print();
 	}
 
 	void testRotate(){
+		uint32_t word = 0xa1b2c3d4;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+		bs->assign(ptr, 4, 30, 1, true);
+		// bs->print();
+		
 		// Assertions
+		// bs->shift(3, bs->begin()+2, bs->end()-18);
+		// bs->print();
+		// bs->shift(3, bs->rbegin()+18, bs->rend()-2);
+		// bs->print();
+	}
+
+	void testFlip(){
 	}
 
 	void testMem(){
+		uint32_t word = 0x01020304;
+		uint8_t* ptr = reinterpret_cast<uint8_t*>(&word);
+		bs->assign(ptr, 4, 32);
+		// bs->print();
+
 		// Assertions
+		// bs->memcpy(8, bs->begin(), bs->rbegin());
+		// bs->print();
+		// bs->memmov(8, bs->rbegin(), bs->begin()+8);
+		// bs->print();
+		// bs->memflp(8, bs->begin());
+		// bs->print();
 	}
 
 	void testSubstream(){
