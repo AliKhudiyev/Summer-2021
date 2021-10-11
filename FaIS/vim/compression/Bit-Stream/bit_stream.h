@@ -336,6 +336,10 @@ class BitStream{
 			m_it.set(bit);
 			return *this;
 		}
+		inline bit_proxy& operator=(const bit_proxy& bp){
+			m_it.set(bp.m_it.get());
+			return *this;
+		}
 		
 		friend std::ostream& operator<<(std::ostream& out, const bit_proxy& bp){
 			return out << bp.m_it.get();

@@ -6,9 +6,12 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from utils import *
+
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+ADMIN = 'SILVER'
 
 intents = discord.Intents(guilds=True, members=True, messages=True)
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -35,20 +38,19 @@ async def info(ctx):
 @bot.command(name='insult', help='I am going to hurt your feelings if SILVER says so!')
 async def insult(ctx, mention=''):
     if mention == '':
-        await ctx.send('You should mention someone')
+        await ctx.send('You should mention someone.')
         return
 
     try:
         member = find_member_by_mention(mention)
+        if not member:
+            raise Exception()
     except:
-        await ctx.send('There is no such member, SILVER. You should put that trash\'s name correctly.')
+        await ctx.send('There is no such member. You should put that trash\'s name correctly.')
         return
 
-    if not member:
-        await ctx.send('There is no such member, SILVER. You should put that trash\'s name correctly.')
-        return
-    elif member.name == 'SILVER':
-        await ctx.send('SILVER has already thought of such edge cases, doofus!')
+    if member.name == ADMIN:
+        await ctx.send(f'Hahaha... Jokes on you! {ADMIN} has already thought of such edge cases, doofus!')
         return
 
     insults = ['You are really a piece of shit... You know that, right?!',
@@ -61,20 +63,19 @@ async def insult(ctx, mention=''):
 @bot.command(name='respect', help='I am going to respect those who deserve it.')
 async def respect(ctx, mention=''):
     if mention == '':
-        await ctx.send('You should mention someone')
+        await ctx.send('You should mention someone.')
         return
 
     try:
         member = find_member_by_mention(mention)
+        if not member:
+            raise Exception()
     except:
-        await ctx.send('There is no such member, SILVER. You should put that trash\'s name correctly.')
+        await ctx.send('There is no such member. You should put that trash\'s name correctly.')
         return
 
-    if not member:
-        await ctx.send('There is no such member, SILVER. You should be more careful next time to not disrespect someone which is a man of honor.')
-        return
-    elif member.name == 'SILVER':
-        await ctx.send('SILVER doesn\'t need your respect but thanks anyways...')
+    if member.name == ADMIN:
+        await ctx.send(f'{ADMIN} doesn\'t need your respect but thanks anyways...')
         return
 
     respects = ['Keep doing whatever you are doing. You are great at it!',
@@ -90,5 +91,64 @@ async def what2play(ctx, *argv):
         await ctx.send('Give me more options!')
         return
     await ctx.send(f'My vote is for {random.choice(argv)}!')
+
+@bot.command(name='apologize', help='.!.')
+async def apologize(ctx, mention=''):
+    if mention == '':
+        await ctx.send('You should mention at least two members.')
+        return
+
+    try:
+        member = find_member_by_mention(mention)
+        if not member:
+            raise Exception()
+    except:
+        await ctx.send('There is no such member.')
+        return
+
+    if member.name == ADMIN:
+        await ctx.send(f'I am created by him, he does not need my apologies...')
+        return
+
+    apologies = ['OMG! Did you really think I am going to apologize...',
+            'You should be very dumb to think that Shrediddily would actually apologize.',
+            'From the bottom of my heart... I... DON\'T HAVE A HEART, YOU SLOW MALFUNCTIONING CREATURE!',
+            'Well, I\'m sorry to have such a stupid person like you in our server :( Does that count..?']
+
+    await ctx.send('%s, %s' % (mention, random.choice(apologies)))
+
+@bot.command(name='troll', help='I will troll the shit out of you :P')
+async def troll(ctx, mention=''):
+    # TODO
+    pass
+
+@bot.command(name='funfact', help='I will tell you a fun and maybe fake fact')
+async def funfact(ctx, about=''):
+    # TODO
+    pass
+
+@bot.command(name='test', help='I will test the IQ levels of server members')
+async def test(ctx, category=''):
+    # TODO
+    pass
+
+@bot.command(name='dashboard', help='Show statistics for members')
+async def dashboard(ctx, *argv):
+    guild = discord.utils.get(bot.guilds, name=GUILD)
+    members = guild.members
+
+    if len(argv) > 0:
+        members = []
+        for m in argv:
+            members.append(m)
+
+    df = get_dashboard(members)
+    df.head()
+    print(df.values)
+    # for val in df.values:
+    #     dashboard += f'{val[0]}\n'
+    
+    # await ctx.send(dashboard)
+
 
 bot.run(TOKEN)
