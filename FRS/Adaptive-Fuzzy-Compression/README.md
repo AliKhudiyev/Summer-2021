@@ -1,0 +1,2 @@
+# Adaptive Fuzzy Compression (AFC)
+

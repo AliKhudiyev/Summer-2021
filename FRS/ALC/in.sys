@@ -1,0 +1,9 @@
+id, type, subtype, id1, id2, depth, support
+1, core, input, 0, 0, 0, 0
+2, core, input, 0, 0, 0, 0
+3, core, selector_1, 0, 0, 1, 0
+4, core, output, 0, 0, 2, 0
+0, interconnect, regular, 1, 3, 0, 0.25
+0, interconnect, regular, 2, 3, 0, 0.75
+0, interconnect, regular, 3, 4, 0, 0.0
+
