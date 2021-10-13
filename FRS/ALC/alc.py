@@ -9,6 +9,8 @@ import random
 from scipy import interpolate
 
 
+print('Imma visualize the shit of this')
+
 class Block:
     def __init__(self):
         pass
@@ -226,7 +228,7 @@ class Renderer:
         # self.ax.xlabel('#iter', fontsize='small')
 
         # System Stats
-        self.ax2.plot(df.loc[:, 'data_sensitivity'].values)
+        self.ax2.plot(df.loc[:, 'learning_sensitivity'].values)
         self.ax2.plot(df.loc[:, 'aggressiveness'].values)
         self.ax2.plot(df.loc[:, 'tolerance'].values)
         self.ax2.plot(df.loc[:, 'lossiness'].values)
@@ -253,7 +255,7 @@ class Renderer:
     def run(self):
         if self.speed:
             self.anim = animation.FuncAnimation(self.fig, self.update, 
-                    interval=1000-(self.speed-5)*210, blit=False)
+                    interval=50+0*1000-(self.speed-5)*210, blit=False)
         else:
             self.update(0)
 
@@ -265,7 +267,7 @@ class Renderer:
         # plt.close()
 
 
-renderer_system = Renderer('build/test.sys', Renderer.SYSTEM_RENDERER)
+renderer_system = Renderer('out.sys', Renderer.SYSTEM_RENDERER)
 renderer_stats = Renderer('out.sta', Renderer.STATS_RENDERER)
 
 renderer_system.run()

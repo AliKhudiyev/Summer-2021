@@ -10,15 +10,15 @@ using namespace alc::core;
 class Generator: public IO{
 	public:
 	Generator(){
-		m_input_count = 2;
+		m_input_count = 3;
 		m_output_count = 1;
-		expression = "i_0 ^ i_1";
+		expression = "i_0 ^ (i_1 | ~i_2)";
 	}
 	~Generator() = default;
 
 	raw_output_t eval(const raw_input_t& input) const{
 		raw_output_t output(1);
-		output[0] = input[0] ^ input[1];
+		output[0] = input[0] ^ (input[1] | !input[2]);
 		return output;
 	}
 
@@ -51,8 +51,15 @@ int main(){
 	// printf("%s -> %s\n", "11", generator.eval("11").c_str());
 	generator.eval();
 	generator.print();
+	generator.save("data.csv");
 
-	System system(2, 1, Policy(), Options());
+	Options options;
+	// options.delay_ms = 1000;
+	
+	Policy policy;
+	policy.policy = Policy::STATIC_COMPRESSION | Policy::DYNAMIC_COMPRESSION;
+
+	System system(3, 1, policy, options);
 	system.fit(generator);
 	printf("Terminated: succ\n");
 

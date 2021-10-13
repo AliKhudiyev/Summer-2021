@@ -28,15 +28,14 @@ int main(int argc, char* const* argv){
 			{"data_in",		required_argument, 	0, 			'I'},
 			{"system_out",	required_argument, 	0, 			'o'},
 			{"options_out",	required_argument, 	0, 			'P'},
-			{"data_in",		required_argument, 	0, 			'O'},
+			{"data_out",	required_argument, 	0, 			'O'},
 			{"stats_out",	required_argument, 	0, 			'T'},
 			{"mode",		required_argument, 	0, 			'm'},
-			{"speed",		required_argument, 	0, 			's'},
-			{"log",			required_argument, 	0, 			'l'},
+			{"speed",		required_argument, 	0, 			's'}
 		};
 
 		int option_index = 0;
-		char c = getopt_long_only(argc, argv, "hvi:p:I:o:P:O:T:m:s:l", long_options, &option_index);
+		char c = getopt_long_only(argc, argv, "hvi:p:I:o:P:O:T:m:s:", long_options, &option_index);
 
 		if(c == -1)
 			break;
@@ -115,10 +114,14 @@ int main(int argc, char* const* argv){
 	}
 
 	Options options;
+	options.delay_ms = 1000;
+	options.log_level = Options::LOG_ALL;
+
 	Policy policy;
+	policy.policy = Policy::STATIC_COMPRESSION | Policy::DYNAMIC_COMPRESSION;
 
 	System* system;
-	if(system_in.empty() || options_in.empty())
+	if(!system_in.empty()) // || options_in.empty())
 		system = new System(system_in.c_str(), options_in.c_str(), options);
 	else
 		system = new System(io.input_count(), io.output_count(), policy, options);

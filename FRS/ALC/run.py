@@ -1,5 +1,8 @@
 import os, sys, getopt, argparse
+from multiprocessing import Process, Queue
+from subprocess import Popen
 import threading
+
 
 ap = argparse.ArgumentParser()
 
@@ -8,12 +11,12 @@ ap.add_argument('-t', '--init', required=False, default='system', help='Initiali
 ap.add_argument('-v', '--visual', required=False, action='store_true', help='Visual mode')
 ap.add_argument('-V', '--verbose', required=False, action='store_true', help='Verbose mode')
 ap.add_argument('-i', '--system_in', required=False, default='', help='System input file path')
-ap.add_argument('-p' '--options_in', required=False, default='', help='Options input file path')
+ap.add_argument('-p', '--options_in', required=False, default='', help='Options input file path')
 ap.add_argument('-I', '--data_in', required=True, default='', help='Dataset input file path')
-ap.add_argument('-o', '--system_out', required=False, default='out.sys', help='System output file path')
-ap.add_argument('-P' '--options_out', required=False, default='out.opt',help='Options output file path')
-ap.add_argument('-O', '--data_out', required=False, default='out.csv', help='Dataset output file path')
-ap.add_argument('-T', '--stats_out', required=False, default='out.sta', help='Stats output file path')
+ap.add_argument('-o', '--system_out', required=False, default='', help='System output file path')
+ap.add_argument('-P', '--options_out', required=False, default='', help='Options output file path')
+ap.add_argument('-O', '--data_out', required=False, default='', help='Dataset output file path')
+ap.add_argument('-T', '--stats_out', required=False, default='', help='Stats output file path')
 ap.add_argument('-m', '--mode', required=False, default=0, help='0: Fit & Predict, 1: Fit, 2: Predict')
 ap.add_argument('-s', '--speed', required=False, default=5, help='Speed of the animation [0, 9]')
 
@@ -46,9 +49,11 @@ def alc():
     alc_args += f'--mode {mode} --speed {speed}'
     if args['verbose']:
         alc_args += ' --verbose'
-    os.system(f'./alc {alc_args}')
+    print('running alc core...')
+    os.system(f'build/alc {alc_args} 2>/dev/null')
 
 def visualize():
+    print('running alc visualizer...')
     visualizer_args = f''
     os.system(f'python3 alc.py {visualizer_args}')
 
@@ -62,12 +67,19 @@ if status:
     print('Terminated')
 else:
     print('Done')
-    thread_core = threading.Thread(target=alc)
-    thread_core.run()
-    thread_core.join()
+    # proc_core = Process(target=alc)
+    # proc_core.start()
 
-    if args['visualize']:
-        thread_visualizer = threading.Thread(target=visualize)
-        thread_visualizer.run()
-        thread_visualizer.join()
+    if args['visual']:
+        # proc_visualizer = Process(target=visualize)
+        # proc_visualizer.start()
+        # proc_visualizer.join()
+        pid = os.fork()
+        if pid: # parent proc
+            alc()
+        else: # child proc
+            visualize()
+    else:
+        alc()
+    # proc_core.join()
 

@@ -286,6 +286,7 @@ namespace alc{
 			fprintf(file, "i_%s ", std::to_string(i).c_str());
 		for(size_t i=0; i<m_output_count; ++i)
 			fprintf(file, "o_%s ", std::to_string(i).c_str());
+		fprintf(file, "\n");
 
 		for(const auto& bs: m_table){
 			for(size_t i=0; i<bs.size(); ++i){
@@ -301,27 +302,31 @@ namespace alc{
 		if(!file)
 			return !LOAD_OK;
 
-		char buf[64];
+		size_t len = 100;
+		char* buf = (char*)malloc(100);
 		char bit;
 		m_input_count = m_output_count = 0;
 
-		while(1){
-			BitStream bs(m_input_count+m_output_count);
-			m_table.push_back(bs);
+		m_table.clear();
+		getline(&buf, &len, file);
 
-			for(size_t i=0; i<m_input_count; ++i){
-				fscanf(file, "%c", &bit);
-				m_table.back()[i] = bit;
-			}
-			for(size_t i=0; i<m_output_count; ++i){
-				fscanf(file, "%c", &bit);
-				m_table.back()[i] = bit;
-			}
-
-			if(!fscanf(file, "%s", buf))
-				break;
+		for(size_t i=0; i<strlen(buf); ++i){
+			if(buf[i] == 'i')
+				++m_input_count;
+			else if(buf[i] == 'o')
+				++m_output_count;
 		}
 
+		BitStream bs(m_input_count+m_output_count);
+		while(getline(&buf, &len, file) != -1){
+			for(size_t i=0; i<2*m_input_count; i+=2)
+				bs[i/2] = (buf[i] == '1');
+			for(size_t i=0; i<2*m_output_count; i+=2)
+				bs[m_input_count+i/2] = (buf[2*m_input_count+i] == '1');
+			m_table.push_back(bs);
+		}
+
+		free(buf);
 		fclose(file);
 		return LOAD_OK;
 	}

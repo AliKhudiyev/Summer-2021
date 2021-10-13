@@ -125,8 +125,9 @@ namespace alc{
 		 * -
 		 * policy 0
 		 */
-		void save(const char* sys_path, const char* opts_path, const char* mode="w");
+		bool save(const char* sys_path, const char* opts_path, const char* mode="w");
 		bool load(const char* sys_path, const char* opts_path);
+		bool save_stats(const char* stats_path, const char* mode="w");
 
 		std::vector<std::string> to_strings() const;
 		void from_strings(const std::vector<std::string>& expr);

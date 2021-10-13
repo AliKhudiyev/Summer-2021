@@ -31,8 +31,10 @@ namespace alc{ namespace parameters{
 	struct Policy{
 		static const char OVERWHELMED_FOR_MEMORY = 1;
 		static const char OVERWHELMED_FOR_PERFORMANCE = 1 << 1;
+		static const char STATIC_COMPRESSION = 1 << 2;
+		static const char DYNAMIC_COMPRESSION = 1 << 3;
 		
-		char policy = OVERWHELMED_FOR_MEMORY;
+		char policy = STATIC_COMPRESSION | DYNAMIC_COMPRESSION | OVERWHELMED_FOR_MEMORY;
 		// if memory usage is over `memory` GBs then system gets overwhelmed
 		float overwhelming_memory = 0.5f;
 		// if compression ratio is less than the `performance` then system gets overwhelmed
@@ -100,12 +102,6 @@ namespace alc{ namespace parameters{
 
 		size_t total_predictions = 0;
 		size_t mistakes = 0;
-
-		void save(const char* file_path, const char* mode="w"){
-		}
-		bool load(const char* file_path){
-			return LOAD_OK;
-		}
 	};
 } }
 

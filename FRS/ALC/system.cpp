@@ -64,8 +64,8 @@ namespace alc{
 		}
 
 		if(m_options.log_level == Options::LOG_LAST){
-			save("test.sys", "test.opt", "w");
-			m_stats.save(m_options.stats_path.c_str(), "w");
+			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "w");
+			save_stats(m_options.stats_path.c_str(), "a");
 		}
 		printf("after: %s\n", to_strings().back().c_str());
 	}
@@ -102,13 +102,16 @@ namespace alc{
 			m_policy.patience = patience;
 
 		// Logging
-		if(m_options.log_level == Options::LOG_ALL)
-			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "a");
+		if(m_options.log_level == Options::LOG_ALL){
+			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "w");
+			save_stats(m_options.stats_path.c_str(), "a");
+		}
 		else if(m_options.log_level == Options::LOG_CUSTOM && 
 				(!(m_iteration_count % m_options.log_after_iterations) ||
 				m_stats.effectively_compressed >= m_options.log_if_compression_ratio ||
 				m_options.log_after_time)){
 			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "a");
+			save_stats(m_options.stats_path.c_str(), "a");
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(m_options.delay_ms));
 		return out_pred;
@@ -137,8 +140,9 @@ namespace alc{
 		}
 	}
 
-	void System::save(const char* sys_path, const char* opts_path, const char* mode){
+	bool System::save(const char* sys_path, const char* opts_path, const char* mode){
 		char mode_[] { "w" };
+		bool status = SAVE_OK;
 		if(mode[0] == 'a')
 			mode_[0] = 'a';
 
@@ -161,7 +165,8 @@ namespace alc{
 						0ul, interconnect.info.support);
 
 			fclose(file);
-		}
+		} else
+			status = !SAVE_OK;
 
 		// Options
 		file = fopen(opts_path, mode_);
@@ -169,7 +174,10 @@ namespace alc{
 			print_params(m_options, file);
 			print_params(m_policy, file);
 			fclose(file);
-		}
+		} else
+			status = !SAVE_OK;
+
+		return status;
 	}
 
 	bool System::load(const char* sys_path, const char* opts_path){
@@ -224,6 +232,48 @@ namespace alc{
 
 		// Options
 		return load_params(opts_path, m_options, m_policy);
+	}
+
+	bool System::save_stats(const char* stats_path, const char* mode){
+		static bool reinit = true;
+		static bool initialized = false;
+		char mode_[] { "w" };
+		if(mode[0] == 'a')
+			mode_[0] = 'a';
+		else
+			initialized = false;
+
+		if(reinit){
+			FILE* file = fopen(stats_path, "w");
+			if(!file)
+				return !SAVE_OK;
+			fclose(file);
+			reinit = false;
+		}
+
+		FILE* file = fopen(stats_path, mode_);
+		if(!file)
+			return !SAVE_OK;
+
+		if(!initialized){
+			fprintf(file, "statically_compressed, dynamically_compressed, effectively_compressed, ");
+			fprintf(file, "compressed, learning_sensitivity, aggressiveness, tolerance, lossiness, ");
+			fprintf(file, "overwhelm, curiosity, core_count, interconnect_count, memory, ");
+			fprintf(file, "total_predictions, mistakes, accuracy\n");
+			initialized = true;
+		}
+
+		fprintf(file, "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %zu, %zu, %f, %zu, %zu, %f\n",
+				m_stats.statically_compressed, m_stats.dynamically_compressed,
+				m_stats.effectively_compressed, m_stats.compressed,
+				m_policy.learning_sensitivity, m_policy.aggressiveness,
+				m_policy.tolerance, m_policy.lossiness, m_policy.overwhelming_memory,
+				m_policy.curiosity, m_inputs.size()+m_outputs.size()+m_cores.size(), 
+				m_interconnects.size(), get_memory_usage()/1000.f, m_stats.total_predictions,
+				m_stats.mistakes, (float)m_stats.mistakes/(1+(float)m_stats.total_predictions));
+
+		fclose(file);
+		return SAVE_OK;
 	}
 
 	std::vector<std::string> System::to_strings() const{
@@ -756,6 +806,7 @@ namespace alc{
 			}
 		}
 		merge_core_count = m_inputs.size() + m_outputs.size() + m_cores.size();
+		dynamic_core_count = static_core_count = merge_core_count;
 		printf(" === DONE ===\n");
 		printf("--> %s\n", to_strings().back().c_str());
 		printf("[merged] #fcores: %zu\n", m_cores.size());
@@ -772,111 +823,115 @@ namespace alc{
 
 		// Static Compression
 		const char* types[] = { "io", "s<0>", "s<1>", "not" };
-		for(size_t i=0; i<m_cores.size(); ++i){
-			auto& fcore1 = m_cores[i];
-			for(size_t j=i+1; j<m_cores.size(); ++j){
-				auto& fcore2 = m_cores[j];
-				// printf("ids: %zu %zu\n", fcore1->id(), fcore2->id());
-				// printf("types: %s %s\n", types[fcore1->type()], types[fcore2->type()]);
-				// printf("hashes: %zu %zu\n", fcore1->hash(), fcore2->hash());
-				if(fcore1->hash() == fcore2->hash() && fcore1->type() == fcore2->type()){
-					// printf("similar sub-structure detected...\n");
-					auto back_cons = fcore2->backward_connections();
-					for(auto& fcore_weak: back_cons){
-						auto fcore = fcore_weak.first.lock();
-						fcore->disconnect(fcore2);
-					}
-					auto forward_cons = fcore2->forward_connections();
-					for(auto& fcore_weak: forward_cons){
-						auto fcore = fcore_weak.first.lock();
-						fcore2->disconnect(fcore);
-						fcore1->connect(fcore);
-					}
-					// printf("cleaning up...\n");
-					m_cores.erase(m_cores.begin()+(j--));
-				}	// printf("---\n");
-			}	// printf("===========\n");
+		if(m_policy.policy & Policy::STATIC_COMPRESSION){
+			for(size_t i=0; i<m_cores.size(); ++i){
+				auto& fcore1 = m_cores[i];
+				for(size_t j=i+1; j<m_cores.size(); ++j){
+					auto& fcore2 = m_cores[j];
+					// printf("ids: %zu %zu\n", fcore1->id(), fcore2->id());
+					// printf("types: %s %s\n", types[fcore1->type()], types[fcore2->type()]);
+					// printf("hashes: %zu %zu\n", fcore1->hash(), fcore2->hash());
+					if(fcore1->hash() == fcore2->hash() && fcore1->type() == fcore2->type()){
+						// printf("similar sub-structure detected...\n");
+						auto back_cons = fcore2->backward_connections();
+						for(auto& fcore_weak: back_cons){
+							auto fcore = fcore_weak.first.lock();
+							fcore->disconnect(fcore2);
+						}
+						auto forward_cons = fcore2->forward_connections();
+						for(auto& fcore_weak: forward_cons){
+							auto fcore = fcore_weak.first.lock();
+							fcore2->disconnect(fcore);
+							fcore1->connect(fcore);
+						}
+						// printf("cleaning up...\n");
+						m_cores.erase(m_cores.begin()+(j--));
+					}	// printf("---\n");
+				}	// printf("===========\n");
+			}
+			static_core_count = m_inputs.size() + m_outputs.size() + m_cores.size();
+			printf("[static] #fcores: %zu\n", m_cores.size());
 		}
-		static_core_count = m_inputs.size() + m_outputs.size() + m_cores.size();
-		printf("[static] #fcores: %zu\n", m_cores.size());
 
 		// Dynamic Compression
-		size_t max_depth_m1 = max_depth() - 1;
-		size_t radius = max_depth_m1 - 1;
-		std::deque<std::vector<std::shared_ptr<Core>>> layers;
+		if(m_policy.policy & Policy::DYNAMIC_COMPRESSION){
+			size_t max_depth_m1 = max_depth() - 1;
+			size_t radius = max_depth_m1 - 1;
+			std::deque<std::vector<std::shared_ptr<Core>>> layers;
 
-		if(radius > m_policy.compression_radius)
-			radius = m_policy.compression_radius;
+			if(radius > m_policy.compression_radius)
+				radius = m_policy.compression_radius;
 
-		++m_iteration_count;
-		run_diagnostics();
-		// printf("after diagnostics:\n");
-		// for(const auto& core: m_inputs)
-		// 	printf("%s(%zu) has memory %s\n", 
-		// 			types[core->type()], core->id(), core->get_memory().to_string().c_str());
-		// printf("---\n");
-		// for(const auto& core: m_outputs)
-		// 	printf("%s(%zu) has memory %s\n", 
-		// 			types[core->type()], core->id(), core->get_memory().to_string().c_str());
-		for(size_t i=0; i<radius+1; ++i){
-			layers.push_back(get(max_depth_m1 - 1 - i));
-		}
-		// printf("preloaded depth range: [%zu, %zu]\n", max_depth_m1-1, max_depth_m1-1-radius);
-		for(size_t i=1; i<max_depth_m1; ++i){
-			auto& layer = layers[0]; // layers.front();
-			// printf("-> [%zu] layer depth: %zu, size: %zu\n", 
-			// 		0ul, layer.front()->depth(), layer.size());
-			for(size_t j=0; j<layers.size()-1; ++j){
-				auto& slayer = layers[layers.size() - 1 - j];
-				// printf("--> [%zu] slayer depth: %zu, size: %zu\n", 
-				// 		layers.size()-1-j, slayer.front()->depth(), slayer.size());
+			++m_iteration_count;
+			run_diagnostics();
+			// printf("after diagnostics:\n");
+			// for(const auto& core: m_inputs)
+			// 	printf("%s(%zu) has memory %s\n", 
+			// 			types[core->type()], core->id(), core->get_memory().to_string().c_str());
+			// printf("---\n");
+			// for(const auto& core: m_outputs)
+			// 	printf("%s(%zu) has memory %s\n", 
+			// 			types[core->type()], core->id(), core->get_memory().to_string().c_str());
+			for(size_t i=0; i<radius+1; ++i){
+				layers.push_back(get(max_depth_m1 - 1 - i));
+			}
+			// printf("preloaded depth range: [%zu, %zu]\n", max_depth_m1-1, max_depth_m1-1-radius);
+			for(size_t i=1; i<max_depth_m1; ++i){
+				auto& layer = layers[0]; // layers.front();
+				// printf("-> [%zu] layer depth: %zu, size: %zu\n", 
+				// 		0ul, layer.front()->depth(), layer.size());
+				for(size_t j=0; j<layers.size()-1; ++j){
+					auto& slayer = layers[layers.size() - 1 - j];
+					// printf("--> [%zu] slayer depth: %zu, size: %zu\n", 
+					// 		layers.size()-1-j, slayer.front()->depth(), slayer.size());
 
-				// layer - slayer
-				for(size_t p=0; p<layer.size(); ++p){
-					auto core = layer[p];
-					if(core->forward_connections().empty()) continue;
-					// printf(" > main core: %s(%zu)\n", types[core->type()], core->id());
-					for(size_t q=0; q<slayer.size(); ++q){
-						auto score = slayer[q];
-						if(score->forward_connections().empty()) continue;
-						// get short-term-memory similarity %
-						// if similar enough -> make_interconnect or replace
-						auto mem1 = core->get_memory();
-						auto mem2 = score->get_memory();
-						mem1 = mem1.substream(mem1.begin(), m_iteration_count);
-						mem2 = mem2.substream(mem2.begin(), m_iteration_count);
-						// printf("%s[%s(%zu)] vs %s[%s(%zu)]\n",
-						// 	mem1.to_string().c_str(), types[core->type()], core->id(),
-						// 	mem2.to_string().c_str(), types[score->type()], score->id());
-						if(mem1 == mem2){ // stm similarity = 100%
-							// printf("replacing, %s = %s\n", 
-							// 		core->get_memory().to_string().c_str(), 
-							// 		score->get_memory().to_string().c_str()); 
-							core->replace_with(score);
-							// printf("done\n");
-							--p;
-							break;
+					// layer - slayer
+					for(size_t p=0; p<layer.size(); ++p){
+						auto core = layer[p];
+						if(core->forward_connections().empty()) continue;
+						// printf(" > main core: %s(%zu)\n", types[core->type()], core->id());
+						for(size_t q=0; q<slayer.size(); ++q){
+							auto score = slayer[q];
+							if(score->forward_connections().empty()) continue;
+							// get short-term-memory similarity %
+							// if similar enough -> make_interconnect or replace
+							auto mem1 = core->get_memory();
+							auto mem2 = score->get_memory();
+							mem1 = mem1.substream(mem1.begin(), m_iteration_count);
+							mem2 = mem2.substream(mem2.begin(), m_iteration_count);
+							// printf("%s[%s(%zu)] vs %s[%s(%zu)]\n",
+							// 	mem1.to_string().c_str(), types[core->type()], core->id(),
+							// 	mem2.to_string().c_str(), types[score->type()], score->id());
+							if(mem1 == mem2){ // stm similarity = 100%
+								// printf("replacing, %s = %s\n", 
+								// 		core->get_memory().to_string().c_str(), 
+								// 		score->get_memory().to_string().c_str()); 
+								core->replace_with(score);
+								// printf("done\n");
+								--p;
+								break;
+							}
 						}
 					}
 				}
+				layers.pop_front();
+				if(max_depth_m1 >= 1 + radius + i){
+					// printf("poping front, adding depth %zu\n", max_depth_m1-1-radius-i);
+					layers.push_back(get(max_depth_m1 - 1 - radius - i));
+				}
 			}
-			layers.pop_front();
-			if(max_depth_m1 >= 1 + radius + i){
-				// printf("poping front, adding depth %zu\n", max_depth_m1-1-radius-i);
-				layers.push_back(get(max_depth_m1 - 1 - radius - i));
+			for(auto it=m_cores.begin(); it!=m_cores.end(); ){
+				auto core = it->get();
+				if(core->forward_connections().empty()){
+					it = m_cores.erase(it);
+				} else{
+					++it;
+				}
 			}
+			// update_interconnects();
+			dynamic_core_count = m_inputs.size() + m_outputs.size() + m_cores.size();
+			printf("[dynamic] #fcores: %zu\n", m_cores.size());
 		}
-		for(auto it=m_cores.begin(); it!=m_cores.end(); ){
-			auto core = it->get();
-			if(core->forward_connections().empty()){
-				it = m_cores.erase(it);
-			} else{
-				++it;
-			}
-		}
-		// update_interconnects();
-		dynamic_core_count = m_inputs.size() + m_outputs.size() + m_cores.size();
-		printf("[dynamic] #fcores: %zu\n", m_cores.size());
 		printf("<--- Statistics --->\n");
 		printf("Statically compressed(%%):  %.1f\n",
 				(float)(merge_core_count-static_core_count)/merge_core_count * 100);
