@@ -6,9 +6,7 @@ import sys
 
 def make_line(line1, line2, proximity):
     line = [[], []]
-    if line1[1][0] != line2[0][0] or line1[1][1] != line2[0][1]:
-        print('hm')
-    p1, p2, p3 = line1[0], [(line1[1][0]+line2[0][0])/2, (line1[1][1]+line2[0][1])/2], line2[1]
+    p1, p2, p3 = line1[0], line1[1], line2[1]
     line[0] = [p1[0]+proximity*(p2[0]-p1[0]), p1[1]+proximity*(p2[1]-p1[1])]
     line[1] = [p3[0]+proximity*(p2[0]-p3[0]), p3[1]+proximity*(p2[1]-p3[1])]
     return line
@@ -16,14 +14,10 @@ def make_line(line1, line2, proximity):
 def bend(line1, line2, degree, proximity):
     points = []
     line = make_line(line1, line2, proximity)
-    # print(f'{degree}: {line1} and {line2} are connected by {line}')
     line1_new = [line1[0], line[0]]
     line2_new = [line[1], line2[1]]
     center = [(line[0][0]+line[1][0])/2, (line[0][1]+line[1][1])/2]
-    lines = [[], []]
-    lines[0] = [line[0], center]
-    lines[1] = [center, line[1]]
-    # print(f'updated {line1_new} and {line2_new}')
+    lines = [[line[0], center], [center, line[1]]]
 
     if degree > 1:
         points1 = bend(line1_new, lines[0], degree-1, proximity)
@@ -34,7 +28,6 @@ def bend(line1, line2, degree, proximity):
         points.append([line[1][0], line[1][1]])
     else:
         points = [line1[0], line1[1], line2[1]]
-    # print('Points:', points)
 
     return points
 
