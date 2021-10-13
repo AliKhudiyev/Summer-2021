@@ -15,7 +15,7 @@ int main(int argc, char* const* argv){
 	std::string system_in, system_out;
 	std::string options_in, options_out;
 	std::string data_in, data_out;
-	std::string stats_in, stats_out;
+	std::string stats_out;
 	int mode = 0, verbose = 0, log = 0;
 	float speed = 5.f;
 
@@ -26,7 +26,6 @@ int main(int argc, char* const* argv){
 			{"system_in",	required_argument,	0,			'i'},
 			{"options_in",	required_argument, 	0, 			'p'},
 			{"data_in",		required_argument, 	0, 			'I'},
-			{"stats_in",	required_argument, 	0, 			't'},
 			{"system_out",	required_argument, 	0, 			'o'},
 			{"options_out",	required_argument, 	0, 			'P'},
 			{"data_in",		required_argument, 	0, 			'O'},
@@ -37,7 +36,7 @@ int main(int argc, char* const* argv){
 		};
 
 		int option_index = 0;
-		char c = getopt_long_only(argc, argv, "hvi:p:I:t:o:P:O:T:m:s:l", long_options, &option_index);
+		char c = getopt_long_only(argc, argv, "hvi:p:I:o:P:O:T:m:s:l", long_options, &option_index);
 
 		if(c == -1)
 			break;
@@ -56,7 +55,6 @@ int main(int argc, char* const* argv){
 				SHOW_USAGE_OF("--system_in, -i [path]", "system path to be loaded");
 				SHOW_USAGE_OF("--options_in, -p [path]", "options path to be loaded");
 				SHOW_USAGE_OF("--data_in, -I [path]", "dataset path to be loaded");
-				SHOW_USAGE_OF("--stats_in, -t [path]", "statistics path to be loaded");
 				SHOW_USAGE_OF("--system_out, -o [path]", "to store the system");
 				SHOW_USAGE_OF("--options_out, -P [path]", "to store the options");
 				SHOW_USAGE_OF("--data_out, -O [path]", "to store the dataset");
@@ -76,8 +74,6 @@ int main(int argc, char* const* argv){
 			case 'I':
 				data_in = std::string(optarg);
 				break;
-			case 't':
-				stats_in = std::string(optarg);
 			case 'o':
 				system_out = std::string(optarg);
 				break;
@@ -109,7 +105,7 @@ int main(int argc, char* const* argv){
 	printf("in.sys: %s | out.sys: %s\n", system_in.c_str(), system_out.c_str());
 	printf("in.opt: %s | out.opt: %s\n", options_in.c_str(), options_out.c_str());
 	printf("in.csv: %s | out.csv: %s\n", data_in.c_str(), data_out.c_str());
-	printf("in.sta: %s | out.sta: %s\n", stats_in.c_str(), stats_out.c_str());
+	printf("out.sta: %s\n", stats_out.c_str());
 	printf("mode: %d | speed: %.1f | verbose: %d | log: %d\n", mode, speed, verbose, log);
 
 	IO io;

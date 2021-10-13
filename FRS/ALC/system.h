@@ -14,8 +14,6 @@ using namespace alc::parameters;
 #define SYSTEM_MIN_MEMORY_SIZE 1e6		// 125 KB
 #define SYSTEM_MAX_MEMORY_SIZE 32*1e9 	// 4 GB
 
-#define LOAD_OK false
-
 namespace alc{
 	class IO;
 
@@ -115,10 +113,18 @@ namespace alc{
 		raw_output_t predict(const raw_input_t& input);
 		void predict(IO& io);
 
-		// id, type, subtype, id1, id2, depth, support
-		// type: core/interconnect
-		// subtype: input, output, selector_0, selector_1, not; regular, speculative
-		// id1 -> id2 (if regular), id1 - id2 (if speculative)
+		/* --- System ---
+		 * id, type, subtype, id1, id2, depth, support
+		 * type: core/interconnect
+		 * subtype: input, output, selector_0, selector_1, not; regular, speculative
+		 * id1 -> id2 (if regular), id1 - id2 (if speculative)
+		 *
+		 * --- Options + Policy ---
+		 * [key] [value]
+		 * system_path out.sys
+		 * -
+		 * policy 0
+		 */
 		void save(const char* sys_path, const char* opts_path, const char* mode="w");
 		bool load(const char* sys_path, const char* opts_path);
 

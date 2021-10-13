@@ -3,6 +3,9 @@
 
 #include <string>
 
+#define LOAD_OK false
+#define SAVE_OK false
+
 namespace alc{ namespace parameters{
 	/*
 	 * Options are used to give directions to the ALC algorithm during the runtime.
@@ -71,6 +74,7 @@ namespace alc{ namespace parameters{
 		
 		size_t epochs = 1;
 		size_t max_iteration_count = -1;
+		// controls termination criterion (in seconds)
 		float max_run_time = -1.f;
 		
 		/* Interconnect Policies */
@@ -78,7 +82,7 @@ namespace alc{ namespace parameters{
 		static const char SUPPORT_BASED_UPDATE = 1 << 1;
 
 		char interconnect_policy;
-		// controls decisivness of system to get rid of useless interconnects asap
+		// controls decisiveness of system to get rid of useless interconnects asap
 		float aggressiveness = 1.f;
 		// after each `cooldown` time passes, weak interconnects get removed
 		float cooldown = -1.f;
@@ -96,6 +100,12 @@ namespace alc{ namespace parameters{
 
 		size_t total_predictions = 0;
 		size_t mistakes = 0;
+
+		void save(const char* file_path, const char* mode="w"){
+		}
+		bool load(const char* file_path){
+			return LOAD_OK;
+		}
 	};
 } }
 

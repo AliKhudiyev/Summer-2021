@@ -20,3 +20,7 @@ add_executable(alc alc.cpp
 	io.cpp
 	utils.cpp
 )
+
+add_executable(make_params make_params.cpp
+	utils.cpp
+)

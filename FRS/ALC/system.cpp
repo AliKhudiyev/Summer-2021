@@ -9,6 +9,8 @@
 
 #define RAND_PROB (urd(mte))
 
+using namespace alc::utils;
+
 namespace alc{
 	static std::random_device rd;
 	static std::mt19937 mte(rd());
@@ -44,8 +46,8 @@ namespace alc{
 	}
 
 	void System::fit(const raw_input_t& input, const raw_output_t& output){
+		++m_iteration_count;
 		if(predict(input) != output || RAND_PROB < m_policy.learning_sensitivity){
-			++m_iteration_count;
 			compress(create(input, output));
 		}
 	}
@@ -61,8 +63,10 @@ namespace alc{
 			}
 		}
 
-		if(m_options.log_level == Options::LOG_LAST)
+		if(m_options.log_level == Options::LOG_LAST){
 			save("test.sys", "test.opt", "w");
+			m_stats.save(m_options.stats_path.c_str(), "w");
+		}
 		printf("after: %s\n", to_strings().back().c_str());
 	}
 
@@ -76,7 +80,7 @@ namespace alc{
 		// Termination criterions check
 		if(m_iteration_count > m_policy.max_iteration_count ||
 				(m_policy.max_run_time != -1.f && m_policy.max_run_time <= passed_time) || 
-				!m_policy.patience){
+				!m_policy.patience || get_memory_usage() >= m_policy.system_memory_size){
 			printf("Criterion met! Terminating...\n");
 			return out_pred;
 		}
@@ -139,35 +143,33 @@ namespace alc{
 			mode_[0] = 'a';
 
 		FILE* file = fopen(sys_path, mode_);
-		if(!file)
-			exit(1);
+		if(file){
+			fprintf(file, "id, type, subtype, id1, id2, depth, support\n");
+			std::vector<std::shared_ptr<Core>> cores = all_cores();
+			const char* core_types[] = { "io", "selector_0", "selector_1", "not" };
+			const char* interconnect_types[] = { "regular", "speculative" };
 
-		fprintf(file, "id, type, subtype, id1, id2, depth, support\n");
-		std::vector<std::shared_ptr<Core>> cores = all_cores();
-		const char* core_types[] = { "io", "selector_0", "selector_1", "not" };
-		const char* interconnect_types[] = { "regular", "speculative" };
+			for(const auto& core: cores)
+				fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
+						core->id(), "core", core_types[core->type()], 0ul, 0ul, core->depth(), 0.f);
 
-		for(const auto& core: cores)
-			fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
-					core->id(), "core", core_types[core->type()], 0ul, 0ul, core->depth(), 0.f);
+			update_interconnects();
+			for(const auto& interconnect: m_interconnects)
+				fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
+						0ul, "interconnect", interconnect_types[interconnect.info.speculative],
+						interconnect.cores.first.lock()->id(), interconnect.cores.second.lock()->id(),
+						0ul, interconnect.info.support);
 
-		update_interconnects();
-		for(const auto& interconnect: m_interconnects)
-			fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
-					0ul, "interconnect", interconnect_types[interconnect.info.speculative],
-					interconnect.cores.first.lock()->id(), interconnect.cores.second.lock()->id(),
-					0ul, interconnect.info.support);
-
-		fclose(file);
+			fclose(file);
+		}
 
 		// Options
 		file = fopen(opts_path, mode_);
-		if(!file)
-			exit(1);
-
-		// TODO: write options
-
-		fclose(file);
+		if(file){
+			print_params(m_options, file);
+			print_params(m_policy, file);
+			fclose(file);
+		}
 	}
 
 	bool System::load(const char* sys_path, const char* opts_path){
@@ -221,14 +223,7 @@ namespace alc{
 		fclose(file);
 
 		// Options
-		file = fopen(sys_path, "r");
-		if(!file)
-			return !LOAD_OK;
-
-		;
-
-		fclose(file);
-		return LOAD_OK;
+		return load_params(opts_path, m_options, m_policy);
 	}
 
 	std::vector<std::string> System::to_strings() const{

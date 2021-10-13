@@ -1,4 +1,5 @@
 import os, sys, getopt, argparse
+import threading
 
 ap = argparse.ArgumentParser()
 
@@ -6,12 +7,13 @@ ap.add_argument('--info', required=False, action='store_true', help='Info')
 ap.add_argument('-t', '--init', required=False, default='system', help='Initialize system directory')
 ap.add_argument('-v', '--visual', required=False, action='store_true', help='Visual mode')
 ap.add_argument('-V', '--verbose', required=False, action='store_true', help='Verbose mode')
-ap.add_argument('-i', '--system_in', required=False, default='in.sys', help='System input file path')
-ap.add_argument('-p' '--options_in', required=False, default='in.opt', help='Options input file path')
-ap.add_argument('-I', '--data_in', required=False, default='in.csv', help='Dataset input file path')
+ap.add_argument('-i', '--system_in', required=False, default='', help='System input file path')
+ap.add_argument('-p' '--options_in', required=False, default='', help='Options input file path')
+ap.add_argument('-I', '--data_in', required=True, default='', help='Dataset input file path')
 ap.add_argument('-o', '--system_out', required=False, default='out.sys', help='System output file path')
 ap.add_argument('-P' '--options_out', required=False, default='out.opt',help='Options output file path')
 ap.add_argument('-O', '--data_out', required=False, default='out.csv', help='Dataset output file path')
+ap.add_argument('-T', '--stats_out', required=False, default='out.sta', help='Stats output file path')
 ap.add_argument('-m', '--mode', required=False, default=0, help='0: Fit & Predict, 1: Fit, 2: Predict')
 ap.add_argument('-s', '--speed', required=False, default=5, help='Speed of the animation [0, 9]')
 
@@ -25,6 +27,32 @@ mode:
 args = vars(ap.parse_args())
 print(args)
 
+
+def alc():
+    system_in = args['system_in']
+    options_in = args['options_in']
+    data_in = args['data_in']
+
+    system_out = args['system_out']
+    options_out = args['options_out']
+    data_out = args['data_out']
+    stats_out = args['stats_out']
+
+    mode = args['mode']
+    speed = args['speed']
+
+    alc_args = f'--system_in "{system_in}" --options_in "{options_in}" --data_in "{data_in}" '
+    alc_args += f'--system_out "{system_out}" --options_out "{options_out}" --data_out "{data_out}" '
+    alc_args += f'--mode {mode} --speed {speed}'
+    if args['verbose']:
+        alc_args += ' --verbose'
+    os.system(f'./alc {alc_args}')
+
+def visualize():
+    visualizer_args = f''
+    os.system(f'python3 alc.py {visualizer_args}')
+
+
 if args['info']:
     print('This is the info')
 
@@ -34,3 +62,12 @@ if status:
     print('Terminated')
 else:
     print('Done')
+    thread_core = threading.Thread(target=alc)
+    thread_core.run()
+    thread_core.join()
+
+    if args['visualize']:
+        thread_visualizer = threading.Thread(target=visualize)
+        thread_visualizer.run()
+        thread_visualizer.join()
+

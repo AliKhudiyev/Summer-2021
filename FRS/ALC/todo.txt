@@ -1,12 +1,12 @@
 Prototype TODO:
-	1.[-] Implement stopping criterion for 
-		[iteration count, passed time, memory occupation, convergence]
+	1.[+] Implement stopping criterion for 
+		[iteration count, passed time, memory occupation]
 	2.[-] Implement 
 		[data sensitivity, aggressiveness, lossiness, compression radius, 
 		recompression depth/count/randomization] 
 		for dynamic compression
-	3.[-] Implement [logging] features
+	3.[+] Implement [logging] features
 	4.[-] Impelement the complete [command-line interface] 
 		(no need to be working for now, except the above shown ones)
-	5.[-] Implement stats visualizer
+	5.[+] Implement stats visualizer
 	6.[+] Improve system visualizer interconnects
