@@ -60,6 +60,7 @@ namespace alc{
 				printf("Invalid input count [%zu] or output count [%zu]\n", n_input, n_output);
 				exit(1);
 			}
+			printf("Initializing the system with %zu input(s) and %zu output(s)\n", n_input, n_output);
 
 			auto& core_memory_size = m_policy.core_memory_size;
 			auto& system_memory_size = m_policy.system_memory_size;
@@ -88,13 +89,13 @@ namespace alc{
 				m_outputs[i] = core;
 			}
 		}
-		System(const char* system_path, const char* options_path, const Options& options):
-			m_options(options)
+		System(const char* system_path, const char* options_path)
 		{
 			if(load(system_path, options_path) != LOAD_OK){
 				printf("Invalid system path [%s] or options path [%s]\n", system_path, options_path);
 				exit(1);
 			}
+			printf("Loading the system from [%s] and [%s]\n", system_path, options_path);
 		}
 		~System() = default;
 

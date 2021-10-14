@@ -6,7 +6,7 @@ stats_path out.sta
 log_after_iterations -1
 log_after_time -1.000000
 log_if_compression_ratio -1.000000
-delay_ms 1000
+delay_ms 0
 log_core_memory 0
 log_system_memory 0
 log_level 2

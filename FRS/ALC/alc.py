@@ -9,8 +9,6 @@ import random
 from scipy import interpolate
 
 
-print('Imma visualize the shit of this')
-
 class Block:
     def __init__(self):
         pass
@@ -77,6 +75,8 @@ class Renderer:
         # Process file
         # self.ax.patches = []
         df = pd.read_csv(self.file_path, skipinitialspace=True)
+        df = df[df['system_id'] == df.loc[df.shape[0]-1, 'system_id']]
+        df.reset_index(drop=True, inplace=True)
         if df.equals(self.prev_df):
             return
         self.prev_df = df
@@ -85,21 +85,28 @@ class Renderer:
         interconnects = []
         coords_by_id = {}
         
-        for row in df.values:
-            index = row[5]
-            if row[1] == 'core':
-                if row[2] == 'input' or row[2] == 'output' or row[2] == 'io':
-                    layers[index].append(Core(row[0], str(row[0]), function=Core.IO))
-                elif row[2] == 'selector_0':
-                    layers[index].append(Core(row[0], function=Core.SELECTOR_0))
-                elif row[2] == 'selector_1':
-                    layers[index].append(Core(row[0], function=Core.SELECTOR_1))
-                else:
-                    layers[index].append(Core(row[0], function=Core.NOT))
+        for row in range(df.shape[0]): # df.values:
+            index = df.loc[row, 'depth'] # row[5]
+            id_ = df.loc[row, 'id']
+            type_ = df.loc[row, 'type']
+            subtype = df.loc[row, 'subtype']
+            id1 = df.loc[row, 'id1']
+            id2 = df.loc[row, 'id2']
+            support = df.loc[row, 'support']
+
+            if type_ == 'core':
+                if subtype == 'input' or subtype == 'output' or subtype == 'io':
+                    layers[index].append(Core(id_, str(id_), function=Core.IO))
+                elif subtype == 'selector_0':
+                    layers[index].append(Core(id_, function=Core.SELECTOR_0))
+                elif subtype == 'selector_1':
+                    layers[index].append(Core(id_, function=Core.SELECTOR_1))
+                else: # subtype == 'not'
+                    layers[index].append(Core(id_, function=Core.NOT))
             else:
-                specul = True if row[2] == 'speculative' else False
-                interconnects.append(Interconnect(row[3], row[4], 
-                    support=float(row[6]), speculative=specul))
+                specul = True if subtype == 'speculative' else False
+                interconnects.append(Interconnect(id1, id2, 
+                    support=float(support), speculative=specul))
 
         # Process objects
         for i, layer in enumerate(layers):
@@ -188,7 +195,8 @@ class Renderer:
                 nodes = np.array(points)
                 x = nodes[:,0]
                 y = nodes[:,1]
-                tck, u = interpolate.splprep([x,y], k=len(points)-1) # s=0
+                k_ = len(points)-1 if len(points) < 4 else 3
+                tck, u = interpolate.splprep([x,y], k=k_) # s=0
                 x_new, y_new = interpolate.splev(np.linspace(0,1,4*len(points)+1), tck, der=0)
                 annot_points[0] = (x_new[len(x_new)//2], y_new[len(y_new)//2])
                 annot_points[1] = (x_new[len(x_new)//2+1], y_new[len(y_new)//2+1])

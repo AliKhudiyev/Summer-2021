@@ -18,7 +18,7 @@ ap.add_argument('-P', '--options_out', required=False, default='', help='Options
 ap.add_argument('-O', '--data_out', required=False, default='', help='Dataset output file path')
 ap.add_argument('-T', '--stats_out', required=False, default='', help='Stats output file path')
 ap.add_argument('-m', '--mode', required=False, default=0, help='0: Fit & Predict, 1: Fit, 2: Predict')
-ap.add_argument('-s', '--speed', required=False, default=5, help='Speed of the animation [0, 9]')
+ap.add_argument('-s', '--speed', required=False, default=5, help='Speed of the animation [1, 10]')
 
 '''
 mode:

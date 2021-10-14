@@ -9,6 +9,7 @@
 
 
 using namespace alc;
+using namespace alc::utils;
 using namespace std;
 
 int main(int argc, char* const* argv){
@@ -91,8 +92,8 @@ int main(int argc, char* const* argv){
 				break;
 			case 's':
 				speed = atof(optarg);
-				if(speed < 1) speed = 1.f;
-				else if(speed > 10) speed = 10.f;
+				// if(speed < 1) speed = 1.f;
+				if(speed > 10) speed = 10.f;
 				break;
 			case 'l':
 				log = atoi(optarg);
@@ -114,15 +115,17 @@ int main(int argc, char* const* argv){
 	}
 
 	Options options;
-	options.delay_ms = 1000;
-	options.log_level = Options::LOG_ALL;
-
 	Policy policy;
-	policy.policy = Policy::STATIC_COMPRESSION | Policy::DYNAMIC_COMPRESSION;
+
+	if(!options_in.empty())
+		load_params(options_in.c_str(), options, policy);
+
+	options.delay_ms = 200 * (10 - speed);
+	options.log_level = Options::LOG_ALL;
 
 	System* system;
 	if(!system_in.empty()) // || options_in.empty())
-		system = new System(system_in.c_str(), options_in.c_str(), options);
+		system = new System(system_in.c_str(), options_in.c_str());
 	else
 		system = new System(io.input_count(), io.output_count(), policy, options);
 

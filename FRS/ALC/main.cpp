@@ -54,6 +54,7 @@ int main(){
 	generator.save("data.csv");
 
 	Options options;
+	options.log_level = Options::LOG_ALL;
 	// options.delay_ms = 1000;
 	
 	Policy policy;

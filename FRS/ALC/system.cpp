@@ -103,7 +103,7 @@ namespace alc{
 
 		// Logging
 		if(m_options.log_level == Options::LOG_ALL){
-			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "w");
+			save(m_options.system_path.c_str(), m_options.options_path.c_str(), "a");
 			save_stats(m_options.stats_path.c_str(), "a");
 		}
 		else if(m_options.log_level == Options::LOG_CUSTOM && 
@@ -141,30 +141,45 @@ namespace alc{
 	}
 
 	bool System::save(const char* sys_path, const char* opts_path, const char* mode){
+		static size_t system_id = 0;
 		char mode_[] { "w" };
 		bool status = SAVE_OK;
 		if(mode[0] == 'a')
 			mode_[0] = 'a';
 
+		if(!system_id){
+			FILE* file = fopen(sys_path, "w");
+			fclose(file);
+
+			file = fopen(opts_path, "w");
+			fclose(file);
+		}
+
 		FILE* file = fopen(sys_path, mode_);
 		if(file){
-			fprintf(file, "id, type, subtype, id1, id2, depth, support\n");
+			if(!system_id || mode_[0] == 'w')
+				fprintf(file, "system_id, id, type, subtype, id1, id2, depth, support\n");
+
 			std::vector<std::shared_ptr<Core>> cores = all_cores();
 			const char* core_types[] = { "io", "selector_0", "selector_1", "not" };
 			const char* interconnect_types[] = { "regular", "speculative" };
 
 			for(const auto& core: cores)
-				fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
-						core->id(), "core", core_types[core->type()], 0ul, 0ul, core->depth(), 0.f);
+				fprintf(file, "%zu, %zu, %s, %s, %zu, %zu, %zu, %.1f\n",
+						system_id, core->id(), "core", core_types[core->type()], 
+						0ul, 0ul, core->depth(), 0.f);
 
 			update_interconnects();
 			for(const auto& interconnect: m_interconnects)
-				fprintf(file, "%zu, %s, %s, %zu, %zu, %zu, %.1f\n",
-						0ul, "interconnect", interconnect_types[interconnect.info.speculative],
-						interconnect.cores.first.lock()->id(), interconnect.cores.second.lock()->id(),
+				fprintf(file, "%zu, %zu, %s, %s, %zu, %zu, %zu, %.1f\n",
+						system_id, 0ul, "interconnect", 
+						interconnect_types[interconnect.info.speculative],
+						interconnect.cores.first.lock()->id(), 
+						interconnect.cores.second.lock()->id(),
 						0ul, interconnect.info.support);
 
 			fclose(file);
+			++system_id;
 		} else
 			status = !SAVE_OK;
 
