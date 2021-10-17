@@ -18,7 +18,8 @@ namespace alc{ namespace utils{
 	
 	void print_params(const Options& opts, FILE* file=stdout);
 	void print_params(const Policy& pol, FILE* file=stdout);
-	std::string set_param(const char* key_, const char* value, Options& opts, Policy& pol);
+	std::string set_param(const char* key_, const char* value, 
+			Options& opts, Policy& pol, bool unset=false);
 	bool is_valid_param(const char* key, Options& opts, Policy& pol);
 	std::string get_info(const char* key, Options& opts, Policy& pol);
 	bool save_params(const char* file_path, const Options& opts, const Policy& pol);

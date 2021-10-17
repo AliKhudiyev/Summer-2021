@@ -4,8 +4,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import animation, patches
 from matplotlib import path
-import time
-import random
+import time, random, sys
 from scipy import interpolate
 
 
@@ -217,7 +216,7 @@ class Renderer:
 
     def update_stats(self, frame):
         self.ax.clear()
-        self.ax.set_ylim(0, 100)
+        self.ax.set_ylim(0, 1)
         self.ax2.clear()
         self.ax2.set_ylim(0, 1)
         df = pd.read_csv(self.file_path, skipinitialspace=True)
@@ -274,9 +273,12 @@ class Renderer:
                     # extra_args=['-vcodec', 'h264', '-pix_fmt', 'yuv420p'])
         # plt.close()
 
+if len(sys.argv) < 3:
+    print('Usage python3 alc.py [system_path] [stats_path]')
+    exit(1)
 
-renderer_system = Renderer('out.sys', Renderer.SYSTEM_RENDERER)
-renderer_stats = Renderer('out.sta', Renderer.STATS_RENDERER)
+renderer_system = Renderer(sys.argv[1], Renderer.SYSTEM_RENDERER)
+renderer_stats = Renderer(sys.argv[2], Renderer.STATS_RENDERER)
 
 renderer_system.run()
 renderer_stats.run()

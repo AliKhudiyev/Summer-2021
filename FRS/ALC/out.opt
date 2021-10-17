@@ -6,13 +6,13 @@ stats_path out.sta
 log_after_iterations -1
 log_after_time -1.000000
 log_if_compression_ratio -1.000000
-delay_ms 0
+delay_ms 1000
 log_core_memory 0
 log_system_memory 0
 log_level 2
 
 <<< = = = Policy = = = >>>
-policy 12
+policy 13
 overwhelming_memory 0.500000
 overwhelming_performance 0.000000
 learning_sensitivity 1.000000
@@ -32,7 +32,7 @@ patience 10
 epochs 1
 max_iteration_count -1
 max_run_time -1.000000
-interconnect_policy 0
+interconnect_policy 1
 aggressiveness 1.000000
 cooldown -1.000000
 minimum_support_threshold 1.000000

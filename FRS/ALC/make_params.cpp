@@ -43,12 +43,15 @@ int main(int argc, char** argv){
 			if(command.size() == 5){
 				options = Options();
 				policy = Policy();
+				printf("< reset\n");
 			}
 			else if(command.size() == 13 && command.substr(6) == "options"){
 				options = Options();
+				printf("< reset\n");
 			}
 			else if(command.size() == 12 && command.substr(6) == "policy"){
 				policy = Policy();
+				printf("< reset\n");
 			}
 			else{
 				fprintf(stderr, "Usage: `reset` or `reset options` or `reset policy`\n");
@@ -59,12 +62,11 @@ int main(int argc, char** argv){
 			size_t index = command.find(' ', 4);
 			if(index != -1){
 				key = command.substr(4, index-4);
-				printf("%s\n", key.c_str());
 				if(is_valid_param(key.c_str(), options, policy)){
 					value = command.substr(index+1);
 					mp[key] = value;
 					set_param(key.c_str(), value.c_str(), options, policy);
-					printf("< set %s = %s\n", key.c_str(), value.c_str());
+					printf("< set %s <= %s\n", key.c_str(), value.c_str());
 				}
 				else{
 					fprintf(stderr, "Key not found!\n");
@@ -72,6 +74,46 @@ int main(int argc, char** argv){
 			}
 			else{
 				fprintf(stderr, "Usage: `set [key] [value]`\n");
+			}
+		}
+
+		else if(command.substr(0, 5) == "unset"){ // unset [key] [value]
+			size_t index = command.find(' ', 6);
+			if(command.size() > 6){
+				if(index != -1){
+					key = command.substr(6, index-6);
+					if(is_valid_param(key.c_str(), options, policy)){
+						value = command.substr(index+1);
+						if(key == "policy" || key == "adaptiveness" || key == "interconnect_policy"){
+							set_param(key.c_str(), value.c_str(), options, policy, true);
+							printf("< unset %s from %s\n", value.c_str(), key.c_str());
+						}
+						else{
+							fprintf(stderr, "Value cannot be unset, try `unset %s`\n", key.c_str());
+						}
+					}
+					else{
+						fprintf(stderr, "Key is not found!\n");
+					}
+				}
+				else{
+					key = command.substr(6);
+					if(is_valid_param(key.c_str(), options, policy)){
+						if(key != "policy" && key != "adaptiveness" && key != "interconnect_policy"){
+							set_param(key.c_str(), "0", options, policy);
+							printf("< set %s = 0\n", key.c_str());
+						}
+						else{
+							fprintf(stderr, "Use with [value], `unset %s [value]'\n", key.c_str());
+						}
+					}
+					else{
+						fprintf(stderr, "Key is not found!\n");
+					}
+				}
+			}
+			else{
+				fprintf(stderr, "Usage: `unset [key] [value]` or `unset [key]`\n");
 			}
 		}
 
@@ -109,6 +151,7 @@ int main(int argc, char** argv){
 			printf("ls [options/policy] - to display parameters\n");
 			printf("reset [options/policy] - to reset parameters\n");
 			printf("set [key] [value] - to set value of the parameter(key)\n");
+			printf("unset [key] [value] - to unset value of the parameter(key)\n");
 			printf("info [key] - to display parameter info\n");
 			printf("load [file] - to load parameters from a file\n");
 			printf("save or s - to save\n");

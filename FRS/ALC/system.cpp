@@ -87,6 +87,9 @@ namespace alc{
 
 		// Predicting
 		out_pred = predict(input);
+		++m_stats.total_predictions;
+		if(out_pred != output)
+			++m_stats.mistakes;
 
 		// Fitting
 		auto t1 = high_resolution_clock::now();
@@ -147,14 +150,14 @@ namespace alc{
 		if(mode[0] == 'a')
 			mode_[0] = 'a';
 
+		// Truncate the system and options files
 		if(!system_id){
 			FILE* file = fopen(sys_path, "w");
-			fclose(file);
-
-			file = fopen(opts_path, "w");
-			fclose(file);
+			if(!file) status = !SAVE_OK;
+			else fclose(file);
 		}
 
+		// System file
 		FILE* file = fopen(sys_path, mode_);
 		if(file){
 			if(!system_id || mode_[0] == 'w')
@@ -179,19 +182,21 @@ namespace alc{
 						0ul, interconnect.info.support);
 
 			fclose(file);
-			++system_id;
 		} else
 			status = !SAVE_OK;
 
-		// Options
-		file = fopen(opts_path, mode_);
-		if(file){
-			print_params(m_options, file);
-			print_params(m_policy, file);
-			fclose(file);
-		} else
-			status = !SAVE_OK;
+		// Options file
+		if(!system_id){ 
+			file = fopen(opts_path, "w");
+			if(file){
+				print_params(m_options, file);
+				print_params(m_policy, file);
+				fclose(file);
+			} else
+				status = !SAVE_OK;
+		}
 
+		++system_id;
 		return status;
 	}
 
@@ -284,8 +289,9 @@ namespace alc{
 				m_policy.learning_sensitivity, m_policy.aggressiveness,
 				m_policy.tolerance, m_policy.lossiness, m_policy.overwhelming_memory,
 				m_policy.curiosity, m_inputs.size()+m_outputs.size()+m_cores.size(), 
-				m_interconnects.size(), get_memory_usage()/1000.f, m_stats.total_predictions,
-				m_stats.mistakes, (float)m_stats.mistakes/(1+(float)m_stats.total_predictions));
+				m_interconnects.size(), get_memory_usage()/10000.f, m_stats.total_predictions,
+				m_stats.mistakes, 
+				(float)(m_stats.total_predictions-m_stats.mistakes)/(1.f+m_stats.total_predictions));
 
 		fclose(file);
 		return SAVE_OK;
@@ -957,6 +963,11 @@ namespace alc{
 		printf("Compressed(%%):             %.1f\n",
 				((float)initial_core_count-(float)dynamic_core_count)/initial_core_count * 100);
 		printf("<--- ---------- --->\n\n");
+
+		m_stats.statically_compressed = (float)(merge_core_count-static_core_count)/merge_core_count;
+		m_stats.dynamically_compressed = (float)(static_core_count-dynamic_core_count)/
+											static_core_count;
+		m_stats.effectively_compressed = (float)(merge_core_count-dynamic_core_count)/merge_core_count;
 	}
 
 	void System::to_string(std::string& expr, const std::weak_ptr<Core>& core_){

@@ -76,7 +76,7 @@ namespace alc{ namespace utils{
 	}
 
 	// returns info for `key`
-	std::string set_param(const char* key_, const char* value, Options& opts, Policy& pol){
+	std::string set_param(const char* key_, const char* value, Options& opts, Policy& pol, bool unset){
 		std::string info;
 		std::string key(key_);
 
@@ -139,9 +139,42 @@ namespace alc{ namespace utils{
 
 		// Policy
 		else if(key == "policy"){
-			info = "char, ";
-			if(value)
-				pol.policy = (char)atoi(value);
+			info = "char, 1(OVERWHELMED_FOR_MEMORY), 2(OVERWHELMED_FOR_PERFORMANCE), 4(STATIC_COMPRESSION), 8(DYNAMIC_COMPRESSION), default is (OVERWHELMED_FOR_MEMORY | STATIC_COMPRESSION | DYNAMIC_COMPRESSION)";
+			if(value){
+				std::string val(value);
+				if(val[0] > '9'){
+					if(unset){
+						if(val == "OVERWHELMED_FOR_MEMORY")
+							pol.policy &= ~Policy::OVERWHELMED_FOR_MEMORY;
+						else if(val == "OVERWHELMED_FOR_PERFORMANCE")
+							pol.policy &= ~Policy::OVERWHELMED_FOR_MEMORY;
+						else if(val == "STATIC_COMPRESSION")
+							pol.policy &= ~Policy::STATIC_COMPRESSION;
+						else if(val == "DYNAMIC_COMPRESSION")
+							pol.policy &= ~Policy::DYNAMIC_COMPRESSION;
+						else
+							fprintf(stderr, "Value not found!\n");
+					}
+					else{
+						if(val == "OVERWHELMED_FOR_MEMORY")
+							pol.policy |= Policy::OVERWHELMED_FOR_MEMORY;
+						else if(val == "OVERWHELMED_FOR_PERFORMANCE")
+							pol.policy |= Policy::OVERWHELMED_FOR_PERFORMANCE;
+						else if(val == "STATIC_COMPRESSION")
+							pol.policy |= Policy::STATIC_COMPRESSION;
+						else if(val == "DYNAMIC_COMPRESSION")
+							pol.policy |= Policy::DYNAMIC_COMPRESSION;
+						else
+							fprintf(stderr, "Value not found!\n");
+					}
+				}
+				else{
+					if(unset)
+						pol.policy &= ~(char)atoi(value);
+					else
+						pol.policy |= (char)atoi(value);
+				}
+			}
 		}
 		else if(key == "overwhelming_memory"){
 			info = "float, ";

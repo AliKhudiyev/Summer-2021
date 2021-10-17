@@ -13,10 +13,10 @@ ap.add_argument('-V', '--verbose', required=False, action='store_true', help='Ve
 ap.add_argument('-i', '--system_in', required=False, default='', help='System input file path')
 ap.add_argument('-p', '--options_in', required=False, default='', help='Options input file path')
 ap.add_argument('-I', '--data_in', required=True, default='', help='Dataset input file path')
-ap.add_argument('-o', '--system_out', required=False, default='', help='System output file path')
-ap.add_argument('-P', '--options_out', required=False, default='', help='Options output file path')
+ap.add_argument('-o', '--system_out', required=False, default='out.sys', help='System output file path')
+ap.add_argument('-P', '--options_out', required=False, default='out.opt', help='Options output file path')
 ap.add_argument('-O', '--data_out', required=False, default='', help='Dataset output file path')
-ap.add_argument('-T', '--stats_out', required=False, default='', help='Stats output file path')
+ap.add_argument('-T', '--stats_out', required=False, default='out.sta', help='Stats output file path')
 ap.add_argument('-m', '--mode', required=False, default=0, help='0: Fit & Predict, 1: Fit, 2: Predict')
 ap.add_argument('-s', '--speed', required=False, default=5, help='Speed of the animation [1, 10]')
 
@@ -49,12 +49,15 @@ def alc():
     alc_args += f'--mode {mode} --speed {speed}'
     if args['verbose']:
         alc_args += ' --verbose'
-    print('running alc core...')
+    print('Running alc core...')
     os.system(f'build/alc {alc_args} 2>/dev/null')
 
 def visualize():
-    print('running alc visualizer...')
-    visualizer_args = f''
+    system_out = args['system_out']
+    stats_out = args['stats_out']
+
+    visualizer_args = f'{system_out} {stats_out}'
+    print('Running alc visualizer...')
     os.system(f'python3 alc.py {visualizer_args}')
 
 
@@ -67,13 +70,7 @@ if status:
     print('Terminated')
 else:
     print('Done')
-    # proc_core = Process(target=alc)
-    # proc_core.start()
-
     if args['visual']:
-        # proc_visualizer = Process(target=visualize)
-        # proc_visualizer.start()
-        # proc_visualizer.join()
         pid = os.fork()
         if pid: # parent proc
             alc()
